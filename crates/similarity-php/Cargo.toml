@@ -1,0 +1,34 @@
+[package]
+name = "similarity-php"
+version = "0.2.3"
+edition = "2021"
+license = "MIT"
+description = "CLI tool for detecting code duplication in PHP projects"
+authors = ["SuguruOoki"]
+repository = "https://github.com/mizchi/similarity"
+homepage = "https://github.com/mizchi/similarity"
+documentation = "https://docs.rs/similarity-php"
+keywords = ["php", "duplicate", "detection", "cli", "similarity"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "similarity-php"
+path = "src/main.rs"
+
+[lib]
+name = "similarity_php"
+
+[dependencies]
+similarity-core = { version = "0.3.1", path = "../core" }
+clap = { version = "4.0", features = ["derive"] }
+anyhow = "1.0"
+walkdir = "2.5"
+ignore = "0.4"
+rayon = "1.10"
+tree-sitter = { workspace = true }
+tree-sitter-php = { workspace = true }
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.0"
+tempfile = "3.0"

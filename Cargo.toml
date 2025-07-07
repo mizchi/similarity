@@ -3,6 +3,7 @@ members = [
   "crates/core",
   "crates/similarity-ts",
   "crates/similarity-py",
+  "crates/similarity-php",
   "crates/similarity-rs",
   "crates/similarity-generic",
   "crates/similarity-elixir",

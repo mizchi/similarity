@@ -1420,6 +1420,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "similarity-php"
+version = "0.2.3"
+dependencies = [
+ "anyhow",
+ "assert_cmd",
+ "clap",
+ "ignore",
+ "predicates",
+ "rayon",
+ "similarity-core",
+ "tempfile",
+ "tree-sitter",
+ "tree-sitter-php",
+ "walkdir",
+]
+
+[[package]]
 name = "similarity-py"
 version = "0.3.1"
 dependencies = [
@@ -1762,6 +1779,16 @@ name = "tree-sitter-language"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4013970217383f67b18aef68f6fb2e8d409bc5755227092d32efb0422ba24b8"
+
+[[package]]
+name = "tree-sitter-php"
+version = "0.23.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f066e94e9272cfe4f1dcb07a1c50c66097eca648f2d7233d299c8ae9ed8c130c"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
 
 [[package]]
 name = "tree-sitter-python"
