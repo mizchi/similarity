@@ -109,6 +109,10 @@ struct Cli {
     /// Size tolerance for overlap detection (0.0-1.0)
     #[arg(long, default_value = "0.25")]
     overlap_size_tolerance: f64,
+
+    /// Exit with code 1 if duplicates are found
+    #[arg(long)]
+    fail_on_duplicates: bool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -139,11 +143,12 @@ fn main() -> anyhow::Result<()> {
     println!("Analyzing code similarity...\n");
 
     let separator = "-".repeat(60);
+    let mut total_duplicates = 0;
 
     // Run functions analysis if enabled
     if functions_enabled {
         println!("=== Function Similarity ===");
-        check::check_paths(
+        let duplicate_count = check::check_paths(
             cli.paths.clone(),
             cli.threshold,
             cli.rename_cost,
@@ -157,6 +162,7 @@ fn main() -> anyhow::Result<()> {
             cli.filter_function_body.as_ref(),
             &cli.exclude,
         )?;
+        total_duplicates += duplicate_count;
     }
 
     // Run types analysis if enabled
@@ -166,7 +172,7 @@ fn main() -> anyhow::Result<()> {
 
     if types_enabled {
         println!("=== Type Similarity ===");
-        check_types(
+        let type_duplicate_count = check_types(
             cli.paths.clone(),
             cli.threshold,
             cli.extensions.as_ref(),
@@ -180,6 +186,7 @@ fn main() -> anyhow::Result<()> {
             cli.include_type_literals,
             &cli.exclude,
         )?;
+        total_duplicates += type_duplicate_count;
     }
 
     // Run overlap analysis if enabled
@@ -189,7 +196,7 @@ fn main() -> anyhow::Result<()> {
 
     if overlap_enabled {
         println!("=== Overlap Detection ===");
-        check_overlaps(
+        let overlap_duplicate_count = check_overlaps(
             cli.paths,
             cli.threshold,
             cli.extensions.as_ref(),
@@ -199,6 +206,12 @@ fn main() -> anyhow::Result<()> {
             cli.overlap_size_tolerance,
             &cli.exclude,
         )?;
+        total_duplicates += overlap_duplicate_count;
+    }
+
+    // Exit with code 1 if duplicates found and --fail-on-duplicates is set
+    if cli.fail_on_duplicates && total_duplicates > 0 {
+        std::process::exit(1);
     }
 
     Ok(())
@@ -235,7 +248,7 @@ fn check_types(
     naming_weight: f64,
     include_type_literals: bool,
     exclude_patterns: &[String],
-) -> anyhow::Result<()> {
+) -> anyhow::Result<usize> {
     use ignore::WalkBuilder;
     use similarity_core::{
         extract_type_literals_from_code, extract_types_from_code, find_similar_type_literals,
@@ -311,7 +324,7 @@ fn check_types(
 
     if files.is_empty() {
         println!("No TypeScript files found in specified paths");
-        return Ok(());
+        return Ok(0);
     }
 
     println!("Checking {} files for similar types...\n", files.len());
@@ -367,7 +380,7 @@ fn check_types(
 
     if all_types.is_empty() && all_type_literals.is_empty() {
         println!("No type definitions or type literals found!");
-        return Ok(());
+        return Ok(0);
     }
 
     println!("Found {} type definitions", all_types.len());
@@ -487,7 +500,7 @@ fn check_types(
         }
     }
 
-    Ok(())
+    Ok(similar_pairs.len() + type_literal_pairs.len())
 }
 
 fn get_relative_path(file_path: &str) -> String {
@@ -573,7 +586,7 @@ fn check_overlaps(
     max_window_size: u32,
     size_tolerance: f64,
     exclude_patterns: &[String],
-) -> anyhow::Result<()> {
+) -> anyhow::Result<usize> {
     use ignore::WalkBuilder;
     use similarity_core::{find_overlaps_across_files, OverlapOptions};
     use std::collections::{HashMap, HashSet};
@@ -646,7 +659,7 @@ fn check_overlaps(
 
     if files.is_empty() {
         println!("No JavaScript/TypeScript files found in specified paths");
-        return Ok(());
+        return Ok(0);
     }
 
     println!("Checking {} files for overlapping code...\n", files.len());
@@ -735,7 +748,7 @@ fn check_overlaps(
         println!("\nTotal overlaps found: {}", overlaps.len());
     }
 
-    Ok(())
+    Ok(overlaps.len())
 }
 
 fn extract_code_lines(code: &str, start_line: u32, end_line: u32) -> Result<String, String> {
