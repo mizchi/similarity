@@ -1,6 +1,6 @@
 [package]
 name = "similarity-php"
-version = "0.2.4"
+version = "0.3.1"
 edition = "2021"
 license = "MIT"
 description = "CLI tool for detecting code duplication in PHP projects"
