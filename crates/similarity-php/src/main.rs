@@ -102,7 +102,7 @@ fn main() -> Result<()> {
     // Run overlap detection if enabled
     if overlap_enabled {
         if functions_enabled {
-            println!("\n{}", separator);
+            println!("\n{separator}");
         }
         println!("=== Overlap Detection (Experimental) ===");
         check::check_overlap(

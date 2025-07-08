@@ -11,6 +11,7 @@ pub struct PhpParser {
 }
 
 impl PhpParser {
+    #[allow(dead_code)]
     pub fn new() -> Result<Self, Box<dyn Error + Send + Sync>> {
         let mut parser = Parser::new();
         parser.set_language(&tree_sitter_php::LANGUAGE_PHP.into())?;
@@ -80,7 +81,7 @@ impl PhpParser {
 
                             let params = extract_params(parameters_node, source);
                             let full_name = if let Some(ns) = namespace {
-                                format!("{}\\{}", ns, name)
+                                format!("{ns}\\{name}")
                             } else {
                                 name.to_string()
                             };
@@ -116,11 +117,7 @@ impl PhpParser {
                             let is_static = is_static_method(node, source);
                             let is_abstract = is_abstract_method(node, source);
 
-                            let method_name = if is_static {
-                                format!("{}::{}", class_name.unwrap_or(""), name)
-                            } else {
-                                format!("{}::{}", class_name.unwrap_or(""), name)
-                            };
+                            let method_name = format!("{}::{}", class_name.unwrap_or(""), name);
 
                             functions.push(GenericFunctionDef {
                                 name: method_name,
@@ -161,13 +158,11 @@ impl PhpParser {
                     if let Some(name_node) = node.child_by_field_name("name") {
                         if let Ok(_ns_name) = name_node.utf8_text(source.as_bytes()) {
                             // Continue traversing sibling nodes with this namespace
-                            return;
                         }
                     }
                 }
                 "namespace_use_declaration" => {
                     // Skip use statements
-                    return;
                 }
                 _ => {
                     let mut subcursor = node.walk();
@@ -243,7 +238,7 @@ impl PhpParser {
                         "variadic_parameter" => {
                             if let Some(var_node) = child.child_by_field_name("name") {
                                 if let Ok(param_text) = var_node.utf8_text(source.as_bytes()) {
-                                    params.push(format!("..{}", param_text));
+                                    params.push(format!("..{param_text}"));
                                 }
                             }
                         }
