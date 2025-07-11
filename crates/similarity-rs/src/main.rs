@@ -77,6 +77,10 @@ struct Cli {
     /// Size tolerance for overlap detection (0.0-1.0)
     #[arg(long, default_value = "0.25")]
     overlap_size_tolerance: f64,
+
+    /// Exit with code 1 if duplicates are found
+    #[arg(long)]
+    fail_on_duplicates: bool,
 }
 
 fn main() -> Result<()> {
@@ -88,11 +92,12 @@ fn main() -> Result<()> {
     println!("Analyzing Rust code similarity...\n");
 
     let separator = "-".repeat(60);
+    let mut total_duplicates = 0;
 
     // Run functions analysis
     if !overlap_enabled || functions_enabled {
         println!("=== Function Similarity ===");
-        check::check_paths(
+        let duplicate_count = check::check_paths(
             cli.paths.clone(),
             cli.threshold,
             cli.rename_cost,
@@ -107,6 +112,7 @@ fn main() -> Result<()> {
             &cli.exclude,
             cli.skip_test,
         )?;
+        total_duplicates += duplicate_count;
     }
 
     // Run overlap analysis if enabled
@@ -116,7 +122,7 @@ fn main() -> Result<()> {
 
     if overlap_enabled {
         println!("=== Overlap Detection ===");
-        check_overlaps(
+        let overlap_duplicate_count = check_overlaps(
             cli.paths,
             cli.threshold,
             cli.extensions.as_ref(),
@@ -126,6 +132,12 @@ fn main() -> Result<()> {
             cli.overlap_size_tolerance,
             &cli.exclude,
         )?;
+        total_duplicates += overlap_duplicate_count;
+    }
+
+    // Exit with code 1 if duplicates found and --fail-on-duplicates is set
+    if cli.fail_on_duplicates && total_duplicates > 0 {
+        std::process::exit(1);
     }
 
     Ok(())
@@ -141,7 +153,7 @@ fn check_overlaps(
     max_window_size: u32,
     size_tolerance: f64,
     exclude_patterns: &[String],
-) -> anyhow::Result<()> {
+) -> anyhow::Result<usize> {
     use crate::rust_parser::RustParser;
     use ignore::WalkBuilder;
     use similarity_core::{find_overlaps_across_files_generic, OverlapOptions};
@@ -215,7 +227,7 @@ fn check_overlaps(
 
     if files.is_empty() {
         println!("No Rust files found in specified paths");
-        return Ok(());
+        return Ok(0);
     }
 
     println!("Checking {} files for overlapping code...\n", files.len());
@@ -309,7 +321,7 @@ fn check_overlaps(
         println!("\nTotal overlaps found: {}", overlaps.len());
     }
 
-    Ok(())
+    Ok(overlaps.len())
 }
 
 fn create_exclude_matcher(exclude_patterns: &[String]) -> Option<globset::GlobSet> {

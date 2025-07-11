@@ -89,10 +89,10 @@ fn display_all_results(
     print: bool,
     filter_function: Option<&String>,
     filter_function_body: Option<&String>,
-) {
+) -> usize {
     if all_results.is_empty() {
         println!("\nNo duplicate functions found!");
-        return;
+        return 0;
     }
 
     // Apply filters if specified
@@ -149,7 +149,7 @@ fn display_all_results(
 
     if all_results.is_empty() {
         println!("\nNo duplicate functions found matching the filters!");
-        return;
+        return 0;
     }
 
     // Sort by priority (impact * similarity)
@@ -229,6 +229,8 @@ fn display_all_results(
             );
         }
     }
+
+    all_results.len()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -245,7 +247,7 @@ pub fn check_paths(
     filter_function: Option<&String>,
     filter_function_body: Option<&String>,
     exclude_patterns: &[String],
-) -> anyhow::Result<()> {
+) -> anyhow::Result<usize> {
     let default_extensions = vec!["ts", "tsx", "js", "jsx", "mjs", "cjs", "mts", "cts"];
     let exts: Vec<&str> =
         extensions.map_or(default_extensions, |v| v.iter().map(String::as_str).collect());
@@ -315,7 +317,7 @@ pub fn check_paths(
 
     if files.is_empty() {
         println!("No TypeScript/JavaScript files found in the specified paths.");
-        return Ok(());
+        return Ok(0);
     }
 
     println!("Checking {} files for duplicates...", files.len());
@@ -354,7 +356,7 @@ pub fn check_paths(
     }
 
     // Display all results together
-    display_all_results(all_results, print, filter_function, filter_function_body);
+    let duplicate_count = display_all_results(all_results, print, filter_function, filter_function_body);
 
-    Ok(())
+    Ok(duplicate_count)
 }

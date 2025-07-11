@@ -44,7 +44,7 @@ pub fn check_paths(
     filter_function_body: Option<&String>,
     _exclude_patterns: &[String],
     skip_test: bool,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<usize> {
     let default_extensions = vec!["rs"];
     let exts: Vec<&str> =
         extensions.map_or(default_extensions, |v| v.iter().map(String::as_str).collect());
@@ -53,7 +53,7 @@ pub fn check_paths(
 
     if files.is_empty() {
         println!("No Rust files found in the specified paths.");
-        return Ok(());
+        return Ok(0);
     }
 
     println!("Checking {} files for duplicates...", files.len());
@@ -82,9 +82,9 @@ pub fn check_paths(
     // Cross-file support can be added later
 
     // Display results
-    display_all_results(all_results, print, filter_function, filter_function_body);
+    let duplicate_count = display_all_results(all_results, print, filter_function, filter_function_body);
 
-    Ok(())
+    Ok(duplicate_count)
 }
 
 /// Display similarity results
@@ -93,10 +93,10 @@ fn display_all_results(
     print: bool,
     filter_function: Option<&String>,
     filter_function_body: Option<&String>,
-) {
+) -> usize {
     if all_results.is_empty() {
         println!("\nNo duplicate functions found!");
-        return;
+        return 0;
     }
 
     // Apply filters if specified
@@ -179,4 +179,6 @@ fn display_all_results(
     }
 
     println!("\nTotal duplicate pairs found: {}", total_count);
+
+    total_count
 }
