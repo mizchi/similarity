@@ -83,7 +83,7 @@ In this study, our primary objective is to apply the theoretical framework to a 
 
 Although the execution match metric is infrequently employed in programming code-related datasets, its prominence has increased in recent years. Our comparative analysis involved assessing datasets from various papers, considering factors such as dataset sizes, programming languages, and executables. As highlighted in Table [1](https://arxiv.org/html/2404.08817v1#S4.T1), the MBXP dataset encompasses 13 different languages, serving as a function-level benchmark that effectively evaluates programming paragraphs. However, the MBXP dataset includes ground-truth solutions for only 7 languages, with C# omitted due to compilation issues. Additionally, we consider the CoderEval dataset to facilitate a comparison between Python and Java code generation, leveraging its longer test samples, results are in the appendix.
 
-| Table 1: Widely-used code generation benchmarks, selected from GitHub            | Benchmark    | Language  | Samples | Executeable |
+| Table 1: Widely-used code generation benchmarks, selected from GitHub            | Benchmark    | Language  | Samples | Executable |
 | -------------------------------------------------------------------------------- | ------------ | --------- | ------- | ----------- |
 | CoNaLA Yin et al. ( [2018](https://arxiv.org/html/2404.08817v1#bib.bib18))       | Python       | 500       | No      |
 | Concode Iyer et al. ( [2018](https://arxiv.org/html/2404.08817v1#bib.bib5))      | Java         | 2000      | No      |
