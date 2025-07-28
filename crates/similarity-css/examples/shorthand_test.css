@@ -1,0 +1,216 @@
+/* Shorthand property test cases */
+
+/* Margin/Padding variations - should be detected as similar */
+.margin-shorthand-1 {
+  margin: 10px;
+}
+
+.margin-longhand-1 {
+  margin-top: 10px;
+  margin-right: 10px;
+  margin-bottom: 10px;
+  margin-left: 10px;
+}
+
+.margin-shorthand-2 {
+  margin: 10px 20px;
+}
+
+.margin-longhand-2 {
+  margin-top: 10px;
+  margin-right: 20px;
+  margin-bottom: 10px;
+  margin-left: 20px;
+}
+
+.padding-mixed {
+  padding: 5px 10px;
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+
+.padding-expanded {
+  padding-top: 5px;
+  padding-right: 10px;
+  padding-bottom: 5px;
+  padding-left: 10px;
+  margin: 15px 0;
+}
+
+/* Flex variations */
+.flex-shorthand-1 {
+  display: flex;
+  flex: 1;
+}
+
+.flex-longhand-1 {
+  display: flex;
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: 0%;
+}
+
+.flex-shorthand-auto {
+  flex: auto;
+}
+
+.flex-longhand-auto {
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: auto;
+}
+
+/* Border variations */
+.border-shorthand {
+  border: 1px solid #000;
+}
+
+.border-partial-longhand {
+  border-width: 1px;
+  border-style: solid;
+  border-color: #000;
+}
+
+.border-full-longhand {
+  border-top-width: 1px;
+  border-top-style: solid;
+  border-top-color: #000;
+  border-right-width: 1px;
+  border-right-style: solid;
+  border-right-color: #000;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  border-bottom-color: #000;
+  border-left-width: 1px;
+  border-left-style: solid;
+  border-left-color: #000;
+}
+
+/* Grid/Gap variations */
+.grid-gap-shorthand {
+  display: grid;
+  gap: 10px 20px;
+}
+
+.grid-gap-longhand {
+  display: grid;
+  row-gap: 10px;
+  column-gap: 20px;
+}
+
+.grid-template-shorthand {
+  grid-template: repeat(2, 1fr) / repeat(3, 1fr);
+}
+
+.grid-template-longhand {
+  grid-template-rows: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* Place properties */
+.place-items-shorthand {
+  display: grid;
+  place-items: center;
+}
+
+.place-items-longhand {
+  display: grid;
+  align-items: center;
+  justify-items: center;
+}
+
+.place-content-shorthand {
+  place-content: space-between center;
+}
+
+.place-content-longhand {
+  align-content: space-between;
+  justify-content: center;
+}
+
+/* Overflow variations */
+.overflow-shorthand {
+  overflow: hidden;
+}
+
+.overflow-longhand {
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
+.overflow-mixed {
+  overflow: auto hidden;
+}
+
+.overflow-mixed-longhand {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Border radius variations */
+.border-radius-shorthand {
+  border-radius: 5px;
+}
+
+.border-radius-longhand {
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+  border-bottom-right-radius: 5px;
+  border-bottom-left-radius: 5px;
+}
+
+.border-radius-complex {
+  border-radius: 5px 10px 15px 20px;
+}
+
+.border-radius-complex-longhand {
+  border-top-left-radius: 5px;
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 15px;
+  border-bottom-left-radius: 20px;
+}
+
+/* Combined complex example */
+.component-shorthand {
+  margin: 20px auto;
+  padding: 10px 15px;
+  border: 2px solid #333;
+  border-radius: 8px;
+  background: #f0f0f0;
+  display: flex;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.component-longhand {
+  margin-top: 20px;
+  margin-right: auto;
+  margin-bottom: 20px;
+  margin-left: auto;
+  padding-top: 10px;
+  padding-right: 15px;
+  padding-bottom: 10px;
+  padding-left: 15px;
+  border-top-width: 2px;
+  border-top-style: solid;
+  border-top-color: #333;
+  border-right-width: 2px;
+  border-right-style: solid;
+  border-right-color: #333;
+  border-bottom-width: 2px;
+  border-bottom-style: solid;
+  border-bottom-color: #333;
+  border-left-width: 2px;
+  border-left-style: solid;
+  border-left-color: #333;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+  border-bottom-left-radius: 8px;
+  background-color: #f0f0f0;
+  display: flex;
+  row-gap: 10px;
+  column-gap: 10px;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}

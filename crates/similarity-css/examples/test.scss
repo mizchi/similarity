@@ -1,0 +1,79 @@
+// Test SCSS file for similarity detection
+
+$primary-color: #007bff;
+$white: #fff;
+$spacing-unit: 20px;
+
+@mixin button-base {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.button {
+  @include button-base;
+  background-color: $primary-color;
+  color: white;
+}
+
+.btn {
+  @include button-base;
+  background-color: $primary-color;
+  color: $white;
+}
+
+.primary-button {
+  background: $primary-color;
+  color: white;
+  padding: 0.625rem 1.25rem;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+@mixin card-style {
+  background: white;
+  padding: $spacing-unit;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.card {
+  @include card-style;
+}
+
+.panel {
+  background-color: #ffffff;
+  padding: $spacing-unit;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+@mixin flex-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header {
+  @include flex-header;
+  padding: 1rem;
+}
+
+.navbar {
+  @include flex-header;
+  padding: 16px;
+}
+
+@media (max-width: 768px) {
+  .button,
+  .btn {
+    width: 100%;
+    padding: 12px;
+  }
+  
+  .card {
+    padding: 15px;
+  }
+}

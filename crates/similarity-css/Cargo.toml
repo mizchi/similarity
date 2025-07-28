@@ -1,0 +1,21 @@
+[package]
+name = "similarity-css"
+version = "0.1.0"
+edition = "2021"
+authors = ["similarity contributors"]
+
+[dependencies]
+similarity-core = { path = "../core" }
+clap = { version = "4.0", features = ["derive"] }
+tree-sitter = "0.24"
+tree-sitter-css = "0.23"
+tree-sitter-scss = "1.0"
+rayon = "1.7"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+indexmap = "2.0"
+ignore = "0.4"
+
+[dev-dependencies]
+tempfile = "3.5"
+insta = "1.29"

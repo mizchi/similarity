@@ -8,6 +8,7 @@ members = [
   "crates/similarity-generic",
   "crates/similarity-elixir",
   "crates/similarity-md",
+  "crates/similarity-css",
 ]
 resolver = "2"
 
