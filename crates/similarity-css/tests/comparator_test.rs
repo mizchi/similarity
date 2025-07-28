@@ -7,7 +7,7 @@ fn create_test_rule(selector: &str, declarations: Vec<(&str, &str)>) -> CssRule 
     for (prop, val) in &declarations {
         let decl = TreeNode::new(
             "declaration".to_string(),
-            format!("{}: {}", prop, val),
+            format!("{prop}: {val}"),
             0
         );
         children.push(Rc::new(decl));

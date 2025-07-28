@@ -102,7 +102,7 @@ fn test_pseudo_elements_and_classes() {
     
     println!("Pseudo-elements found:");
     for elem in &pseudo_elements {
-        println!("  - {}", elem);
+        println!("  - {elem}");
     }
     
     assert_eq!(pseudo_elements.len(), 4, "Should find 4 pseudo-elements");
@@ -118,7 +118,7 @@ fn test_pseudo_elements_and_classes() {
     // Test specificity of complex selectors
     let complex_selector = ".link:focus:not(:focus-visible)";
     let spec = calculate_specificity(complex_selector);
-    println!("Specificity of '{}': {}", complex_selector, spec);
+    println!("Specificity of '{complex_selector}': {spec}");
     assert_eq!(spec.classes, 3, "Should count :focus, :not, and :focus-visible as classes");
 }
 
@@ -438,7 +438,7 @@ fn test_css_functions_and_modern_features() {
             .collect();
         
         println!("Rules using {}: {}", func_name, rules_with_func.len());
-        assert!(!rules_with_func.is_empty(), "Should find rules using {}", func_name);
+        assert!(!rules_with_func.is_empty(), "Should find rules using {func_name}");
     }
     
     // Check logical properties
@@ -449,7 +449,7 @@ fn test_css_functions_and_modern_features() {
             .filter(|r| r.declarations.iter().any(|(k, _)| k == prop))
             .collect();
         
-        assert!(!rules_with_prop.is_empty(), "Should find rules using {}", prop);
+        assert!(!rules_with_prop.is_empty(), "Should find rules using {prop}");
     }
 }
 
@@ -541,7 +541,7 @@ select {
     
     // Check heading rules
     let heading_rules: Vec<_> = rules.iter()
-        .filter(|r| r.name.starts_with("h") && r.name.chars().nth(1).map_or(false, |c| c.is_numeric()))
+        .filter(|r| r.name.starts_with("h") && r.name.chars().nth(1).is_some_and(|c| c.is_numeric()))
         .collect();
     
     assert!(heading_rules.len() >= 6, "Should generate rules for all heading levels");

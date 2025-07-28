@@ -259,8 +259,7 @@ impl DuplicateAnalyzer {
             recommendations.push("\nBEM component analysis:".to_string());
             for (component, count) in bem_components {
                 recommendations.push(format!(
-                    "  - Component '{}' has {} variations with similar styles",
-                    component, count
+                    "  - Component '{component}' has {count} variations with similar styles"
                 ));
             }
         }

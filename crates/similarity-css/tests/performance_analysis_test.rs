@@ -104,7 +104,7 @@ $base-margin: 1rem;
         .collect();
     let convert_time = start.elapsed();
     
-    println!("Converting to CSS rules took {:?}", convert_time);
+    println!("Converting to CSS rules took {convert_time:?}");
     
     // Analyze duplicates
     let start = Instant::now();
@@ -112,7 +112,7 @@ $base-margin: 1rem;
     let result = analyzer.analyze();
     let analyze_time = start.elapsed();
     
-    println!("Duplicate analysis took {:?}", analyze_time);
+    println!("Duplicate analysis took {analyze_time:?}");
     println!("Found {} exact duplicates", result.exact_duplicates.len());
     println!("Found {} style duplicates", result.style_duplicates.len());
     println!("Found {} BEM variations", result.bem_variations.len());
@@ -283,7 +283,7 @@ $container-max-widths: (
     let recommendations = analyzer.get_recommendations(&result);
     println!("\nRecommendations:");
     for rec in recommendations {
-        println!("{}", rec);
+        println!("{rec}");
     }
     
     // Should find button pattern duplications
@@ -415,7 +415,7 @@ $spacing-scale: (
     let rules = parser.extract_functions(scss_content, "tailwind.scss").unwrap();
     let parse_time = start.elapsed();
     
-    println!("Parsing Tailwind-like utilities took {:?}", parse_time);
+    println!("Parsing Tailwind-like utilities took {parse_time:?}");
     println!("Generated {} utility classes", rules.len());
     
     // Count different types
@@ -425,11 +425,11 @@ $spacing-scale: (
     let text_count = rules.iter().filter(|r| r.name.contains("text")).count();
     let responsive_count = rules.iter().filter(|r| r.name.contains("sm\\:") || r.name.contains("md\\:")).count();
     
-    println!("Margin utilities: {}", margin_count);
-    println!("Padding utilities: {}", padding_count);
-    println!("Flexbox utilities: {}", flex_count);
-    println!("Text utilities: {}", text_count);
-    println!("Responsive utilities: {}", responsive_count);
+    println!("Margin utilities: {margin_count}");
+    println!("Padding utilities: {padding_count}");
+    println!("Flexbox utilities: {flex_count}");
+    println!("Text utilities: {text_count}");
+    println!("Responsive utilities: {responsive_count}");
     
     // Utilities should parse quickly
     assert!(parse_time.as_millis() < 500, "Utility parsing should be fast");

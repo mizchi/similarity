@@ -55,15 +55,12 @@ fn find_files(path: &str, extension: &str) -> Vec<PathBuf> {
             .follow_links(false)
             .build();
             
-        for entry in walker {
-            if let Ok(entry) = entry {
-                let path = entry.path();
-                if path.is_file() {
-                    if path.extension().and_then(|s| s.to_str()) == Some(extension) {
-                        files.push(path.to_path_buf());
-                    }
+        for entry in walker.flatten() {
+            let path = entry.path();
+            if path.is_file()
+                && path.extension().and_then(|s| s.to_str()) == Some(extension) {
+                    files.push(path.to_path_buf());
                 }
-            }
         }
     }
     
@@ -77,7 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let files = find_files(&args.target, extension);
 
     if files.is_empty() {
-        eprintln!("No {} files found in the specified path", extension);
+        eprintln!("No {extension} files found in the specified path");
         return Ok(());
     }
 
@@ -107,7 +104,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             Err(e) => {
-                eprintln!("Error parsing {}: {}", file_str, e);
+                eprintln!("Error parsing {file_str}: {e}");
             }
         }
     }
@@ -151,7 +148,7 @@ fn output_standard(result: &similarity_css::DuplicateAnalysisResult, all_rules: 
             let file2 = all_rules.iter().find(|(_, r)| r.selector == dup.rule2.selector).map(|(f, _)| f).unwrap_or(&empty_string);
             
             println!("\n{}. {} and {}", i + 1, dup.rule1.selector, dup.rule2.selector);
-            println!("   Files: {} and {}", file1, file2);
+            println!("   Files: {file1} and {file2}");
             println!("   Lines: {}-{} and {}-{}", 
                 dup.rule1.start_line, dup.rule1.end_line,
                 dup.rule2.start_line, dup.rule2.end_line);
@@ -167,7 +164,7 @@ fn output_standard(result: &similarity_css::DuplicateAnalysisResult, all_rules: 
             
             println!("\n{}. {} and {} (similarity: {:.2}%)", 
                 i + 1, dup.rule1.selector, dup.rule2.selector, dup.similarity * 100.0);
-            println!("   Files: {} and {}", file1, file2);
+            println!("   Files: {file1} and {file2}");
             println!("   Lines: {}-{} and {}-{}", 
                 dup.rule1.start_line, dup.rule1.end_line,
                 dup.rule2.start_line, dup.rule2.end_line);
@@ -184,7 +181,7 @@ fn output_standard(result: &similarity_css::DuplicateAnalysisResult, all_rules: 
     }
     
     if result.exact_duplicates.is_empty() && result.style_duplicates.is_empty() {
-        println!("\nNo duplicates found with threshold >= {}", threshold);
+        println!("\nNo duplicates found with threshold >= {threshold}");
     }
     
     // Summary

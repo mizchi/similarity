@@ -214,9 +214,7 @@ fn test_specificity_based_override_detection() {
         assert_eq!(
             (spec.ids, spec.classes, spec.types),
             expected,
-            "Specificity for '{}' should be {:?}",
-            selector,
-            expected
+            "Specificity for '{selector}' should be {expected:?}"
         );
     }
     

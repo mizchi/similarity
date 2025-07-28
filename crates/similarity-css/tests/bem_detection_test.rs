@@ -88,11 +88,11 @@ fn test_bem_exact_duplicate_detection() {
     assert!(analysis1.is_duplicate_of(&analysis2), "Same selectors should be duplicates");
     
     // Compare declarations
-    let sim_0_1 = calculate_rule_similarity(&card_rules[0], &card_rules[1]);
+    let sim_0_1 = calculate_rule_similarity(card_rules[0], card_rules[1]);
     assert!(sim_0_1 > 0.99, "Exact duplicate rules should have very high similarity");
     
-    let sim_0_2 = calculate_rule_similarity(&card_rules[0], &card_rules[2]);
-    println!("Similarity between similar rules: {}", sim_0_2);
+    let sim_0_2 = calculate_rule_similarity(card_rules[0], card_rules[2]);
+    println!("Similarity between similar rules: {sim_0_2}");
     println!("Rule 0: {:?}", card_rules[0].declarations);
     println!("Rule 2: {:?}", card_rules[2].declarations);
     assert!(sim_0_2 > 0.7 && sim_0_2 < 0.99, "Similar but not exact rules should have high but not perfect similarity");
@@ -103,7 +103,7 @@ fn test_bem_exact_duplicate_detection() {
         .collect();
     
     assert_eq!(modifier_rules.len(), 2, "Should find 2 .card--primary rules");
-    let mod_sim = calculate_rule_similarity(&modifier_rules[0], &modifier_rules[1]);
+    let mod_sim = calculate_rule_similarity(modifier_rules[0], modifier_rules[1]);
     assert!(mod_sim > 0.99, "Duplicate modifiers should have very high similarity");
 }
 
@@ -148,14 +148,12 @@ fn test_bem_specificity_hierarchy() {
     let _rules = parser.extract_functions(scss_content, "test.scss").unwrap();
     
     // Test specificity ordering
-    let selectors = vec![
-        ".button",
+    let selectors = [".button",
         ".button__icon",
         ".button--primary",
         ".button--primary .button__icon",
         ".button--primary:hover",
-        "#special-button.button",
-    ];
+        "#special-button.button"];
     
     let specificities: Vec<_> = selectors.iter()
         .map(|s| (s, calculate_specificity(s)))

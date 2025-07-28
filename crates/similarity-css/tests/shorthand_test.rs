@@ -1,4 +1,4 @@
-use similarity_css::{CssRule, compare_css_rules, expand_shorthand_properties};
+use similarity_css::{CssRule, compare_css_rules};
 use similarity_core::tree::TreeNode;
 use std::rc::Rc;
 
@@ -11,7 +11,7 @@ fn create_test_rule_with_declarations(selector: &str, declarations: Vec<(&str, &
     for (prop, val) in &decls {
         let decl = TreeNode::new(
             "declaration".to_string(),
-            format!("{}: {}", prop, val),
+            format!("{prop}: {val}"),
             0
         );
         children.push(Rc::new(decl));
@@ -100,7 +100,7 @@ fn test_border_shorthand() {
     // Note: The expanded version would have all 4 sides
     // This tests partial matching
     let results = compare_css_rules(&[rule1], &[rule2], 0.5);
-    assert!(results.len() > 0);
+    assert!(!results.is_empty());
 }
 
 #[test]

@@ -50,7 +50,7 @@ fn flatten_node(
             let declarations = extract_declarations(node, source);
             
             #[cfg(test)]
-            println!("  Combined selectors: {:?}, declarations: {:?}", combined_selectors, declarations);
+            println!("  Combined selectors: {combined_selectors:?}, declarations: {declarations:?}");
             
             // Add flat rule if there are declarations
             if !declarations.is_empty() {
@@ -64,7 +64,7 @@ fn flatten_node(
                 }
             } else {
                 #[cfg(test)]
-                println!("  No declarations found for selectors: {:?}", combined_selectors);
+                println!("  No declarations found for selectors: {combined_selectors:?}");
             }
             
             // Process nested rules in the block
@@ -165,7 +165,7 @@ fn extract_selectors(node: &Node, source: &str) -> Vec<String> {
     }
     
     #[cfg(test)]
-    println!("  Extracted selectors: {:?}", selectors);
+    println!("  Extracted selectors: {selectors:?}");
     
     selectors
 }
@@ -239,16 +239,15 @@ fn combine_selectors(parents: &[String], currents: &[String]) -> Vec<String> {
     
     for parent in parents {
         for current in currents {
-            let combined_selector = if current.starts_with('&') {
+            let combined_selector = if let Some(suffix) = current.strip_prefix('&') {
                 // Handle parent selector reference
-                let suffix = &current[1..];
-                format!("{}{}", parent, suffix)
+                format!("{parent}{suffix}")
             } else if current.starts_with(':') {
                 // Handle pseudo-classes/elements
-                format!("{}{}", parent, current)
+                format!("{parent}{current}")
             } else {
                 // Normal nesting
-                format!("{} {}", parent, current)
+                format!("{parent} {current}")
             };
             combined.push(combined_selector);
         }
@@ -291,7 +290,7 @@ mod tests {
         for rule in &rules {
             println!("  - {} ({} declarations)", rule.selector, rule.declarations.len());
             for (prop, val) in &rule.declarations {
-                println!("    {}: {}", prop, val);
+                println!("    {prop}: {val}");
             }
         }
         

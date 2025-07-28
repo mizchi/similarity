@@ -4,7 +4,7 @@ fn main() {
 .m-2 { margin: 0.5rem; }"#;
 
     println!("Testing SCSS parser with single-line rules:");
-    println!("{}", scss_content);
+    println!("{scss_content}");
     println!("\n---\n");
 
     use similarity_css::scss_simple_flattener::simple_flatten_scss;
@@ -16,12 +16,12 @@ fn main() {
                 println!("  - {} (lines {}-{}, {} declarations)", 
                     rule.selector, rule.start_line, rule.end_line, rule.declarations.len());
                 for (prop, val) in &rule.declarations {
-                    println!("    {}: {}", prop, val);
+                    println!("    {prop}: {val}");
                 }
             }
         }
         Err(e) => {
-            println!("Error: {}", e);
+            println!("Error: {e}");
         }
     }
 }

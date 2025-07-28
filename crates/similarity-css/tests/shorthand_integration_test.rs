@@ -91,7 +91,7 @@ fn test_invalid_shorthand_handling() {
     assert!(expanded.iter().any(|(k, v)| k == "flex" && v.contains("invalid")));
     
     // Unknown property should pass through
-    assert!(expanded.iter().any(|(k, v)| k == "unknown-property"));
+    assert!(expanded.iter().any(|(k, _v)| k == "unknown-property"));
 }
 
 #[test]

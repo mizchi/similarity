@@ -91,7 +91,7 @@ pub fn simple_flatten_scss(content: &str) -> Result<Vec<SimpleFlatRule>, Box<dyn
                         if let Some(parent_selectors) = selector_stack.last() {
                             for parent in parent_selectors {
                                 if !parent.starts_with('@') {
-                                    expanded_selectors.push(format!("{} {}", parent, selector));
+                                    expanded_selectors.push(format!("{parent} {selector}"));
                                 } else {
                                     expanded_selectors.push(selector.to_string());
                                 }
@@ -224,7 +224,7 @@ mod tests {
         for rule in &rules {
             println!("  - {} ({} declarations)", rule.selector, rule.declarations.len());
             for (prop, val) in &rule.declarations {
-                println!("    {}: {}", prop, val);
+                println!("    {prop}: {val}");
             }
         }
         
@@ -285,7 +285,7 @@ mod tests {
         for rule in &rules {
             println!("  - {} ({} decls)", rule.selector, rule.declarations.len());
             for (k, v) in &rule.declarations {
-                println!("    {}: {}", k, v);
+                println!("    {k}: {v}");
             }
         }
         

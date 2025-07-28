@@ -33,39 +33,39 @@ pub fn expand_shorthand_properties(declarations: &[(String, String)]) -> Vec<(St
 
 /// Expand margin/padding shorthand (1-4 values)
 fn expand_box_model_shorthand(expanded: &mut Vec<(String, String)>, prefix: &str, value: &str) {
-    let parts: Vec<&str> = value.trim().split_whitespace().collect();
+    let parts: Vec<&str> = value.split_whitespace().collect();
     
     match parts.len() {
         1 => {
             // All sides same value
             let val = parts[0];
-            expanded.push((format!("{}-top", prefix), val.to_string()));
-            expanded.push((format!("{}-right", prefix), val.to_string()));
-            expanded.push((format!("{}-bottom", prefix), val.to_string()));
-            expanded.push((format!("{}-left", prefix), val.to_string()));
+            expanded.push((format!("{prefix}-top"), val.to_string()));
+            expanded.push((format!("{prefix}-right"), val.to_string()));
+            expanded.push((format!("{prefix}-bottom"), val.to_string()));
+            expanded.push((format!("{prefix}-left"), val.to_string()));
         }
         2 => {
             // vertical | horizontal
             let (vertical, horizontal) = (parts[0], parts[1]);
-            expanded.push((format!("{}-top", prefix), vertical.to_string()));
-            expanded.push((format!("{}-right", prefix), horizontal.to_string()));
-            expanded.push((format!("{}-bottom", prefix), vertical.to_string()));
-            expanded.push((format!("{}-left", prefix), horizontal.to_string()));
+            expanded.push((format!("{prefix}-top"), vertical.to_string()));
+            expanded.push((format!("{prefix}-right"), horizontal.to_string()));
+            expanded.push((format!("{prefix}-bottom"), vertical.to_string()));
+            expanded.push((format!("{prefix}-left"), horizontal.to_string()));
         }
         3 => {
             // top | horizontal | bottom
             let (top, horizontal, bottom) = (parts[0], parts[1], parts[2]);
-            expanded.push((format!("{}-top", prefix), top.to_string()));
-            expanded.push((format!("{}-right", prefix), horizontal.to_string()));
-            expanded.push((format!("{}-bottom", prefix), bottom.to_string()));
-            expanded.push((format!("{}-left", prefix), horizontal.to_string()));
+            expanded.push((format!("{prefix}-top"), top.to_string()));
+            expanded.push((format!("{prefix}-right"), horizontal.to_string()));
+            expanded.push((format!("{prefix}-bottom"), bottom.to_string()));
+            expanded.push((format!("{prefix}-left"), horizontal.to_string()));
         }
         4 => {
             // top | right | bottom | left
-            expanded.push((format!("{}-top", prefix), parts[0].to_string()));
-            expanded.push((format!("{}-right", prefix), parts[1].to_string()));
-            expanded.push((format!("{}-bottom", prefix), parts[2].to_string()));
-            expanded.push((format!("{}-left", prefix), parts[3].to_string()));
+            expanded.push((format!("{prefix}-top"), parts[0].to_string()));
+            expanded.push((format!("{prefix}-right"), parts[1].to_string()));
+            expanded.push((format!("{prefix}-bottom"), parts[2].to_string()));
+            expanded.push((format!("{prefix}-left"), parts[3].to_string()));
         }
         _ => {
             // Invalid, keep original
@@ -81,7 +81,7 @@ fn expand_border_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
     let mut style = "none";
     let mut color = "currentcolor";
     
-    let parts: Vec<&str> = value.trim().split_whitespace().collect();
+    let parts: Vec<&str> = value.split_whitespace().collect();
     
     for part in parts {
         if is_border_width(part) {
@@ -96,15 +96,15 @@ fn expand_border_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
     
     // Apply to all sides
     for side in &["top", "right", "bottom", "left"] {
-        expanded.push((format!("border-{}-width", side), width.to_string()));
-        expanded.push((format!("border-{}-style", side), style.to_string()));
-        expanded.push((format!("border-{}-color", side), color.to_string()));
+        expanded.push((format!("border-{side}-width"), width.to_string()));
+        expanded.push((format!("border-{side}-style"), style.to_string()));
+        expanded.push((format!("border-{side}-color"), color.to_string()));
     }
 }
 
 /// Expand border-radius shorthand
 fn expand_border_radius_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
-    let parts: Vec<&str> = value.trim().split_whitespace().collect();
+    let parts: Vec<&str> = value.split_whitespace().collect();
     
     match parts.len() {
         1 => {
@@ -156,7 +156,7 @@ fn expand_background_shorthand(expanded: &mut Vec<(String, String)>, value: &str
 /// Expand font shorthand (simplified)
 fn expand_font_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
     // This is a simplified version
-    let parts: Vec<&str> = value.trim().split_whitespace().collect();
+    let parts: Vec<&str> = value.split_whitespace().collect();
     
     if parts.len() >= 2 {
         // Try to parse font-size/line-height font-family
@@ -176,7 +176,7 @@ fn expand_font_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
 
 /// Expand flex shorthand
 fn expand_flex_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
-    let parts: Vec<&str> = value.trim().split_whitespace().collect();
+    let parts: Vec<&str> = value.split_whitespace().collect();
     
     match parts.len() {
         1 => {
@@ -247,7 +247,7 @@ fn expand_grid_template_shorthand(expanded: &mut Vec<(String, String)>, value: &
 
 /// Expand gap/grid-gap shorthand
 fn expand_gap_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
-    let parts: Vec<&str> = value.trim().split_whitespace().collect();
+    let parts: Vec<&str> = value.split_whitespace().collect();
     
     match parts.len() {
         1 => {
@@ -266,7 +266,7 @@ fn expand_gap_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
 
 /// Expand place-items shorthand
 fn expand_place_items_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
-    let parts: Vec<&str> = value.trim().split_whitespace().collect();
+    let parts: Vec<&str> = value.split_whitespace().collect();
     
     match parts.len() {
         1 => {
@@ -285,7 +285,7 @@ fn expand_place_items_shorthand(expanded: &mut Vec<(String, String)>, value: &st
 
 /// Expand place-content shorthand
 fn expand_place_content_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
-    let parts: Vec<&str> = value.trim().split_whitespace().collect();
+    let parts: Vec<&str> = value.split_whitespace().collect();
     
     match parts.len() {
         1 => {
@@ -304,7 +304,7 @@ fn expand_place_content_shorthand(expanded: &mut Vec<(String, String)>, value: &
 
 /// Expand place-self shorthand
 fn expand_place_self_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
-    let parts: Vec<&str> = value.trim().split_whitespace().collect();
+    let parts: Vec<&str> = value.split_whitespace().collect();
     
     match parts.len() {
         1 => {
@@ -323,7 +323,7 @@ fn expand_place_self_shorthand(expanded: &mut Vec<(String, String)>, value: &str
 
 /// Expand overflow shorthand
 fn expand_overflow_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
-    let parts: Vec<&str> = value.trim().split_whitespace().collect();
+    let parts: Vec<&str> = value.split_whitespace().collect();
     
     match parts.len() {
         1 => {

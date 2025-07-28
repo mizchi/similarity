@@ -10,6 +10,12 @@ pub struct CssParser {
     is_scss: bool,
 }
 
+impl Default for CssParser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CssParser {
     pub fn new() -> Self {
         let mut parser = Parser::new();
@@ -29,6 +35,7 @@ impl CssParser {
         }
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn convert_node(&self, node: Node, source: &str, id_counter: &mut usize) -> TreeNode {
         let current_id = *id_counter;
         *id_counter += 1;
@@ -76,7 +83,7 @@ impl LanguageParser for CssParser {
             for rule in flat_rules {
                 // Pass declarations through decorators field (temporary solution)
                 let decorators: Vec<String> = rule.declarations.iter()
-                    .map(|(prop, value)| format!("{}: {}", prop, value))
+                    .map(|(prop, value)| format!("{prop}: {value}"))
                     .collect();
                 
                 functions.push(GenericFunctionDef {
@@ -172,7 +179,7 @@ fn extract_rules(node: &Node, source: &str, functions: &mut Vec<GenericFunctionD
                     let name = name_node.utf8_text(source.as_bytes()).unwrap_or("mixin");
                     
                     functions.push(GenericFunctionDef {
-                        name: format!("@mixin {}", name),
+                        name: format!("@mixin {name}"),
                         start_line: child.start_position().row as u32 + 1,
                         end_line: child.end_position().row as u32 + 1,
                         body_start_line: child.start_position().row as u32 + 1,

@@ -108,7 +108,7 @@ fn mixin_to_tree(node: &Node, source: &str) -> Option<Rc<TreeNode>> {
     
     let mut tree_node = TreeNode::new(
         "mixin".to_string(),
-        format!("@mixin {}", name),
+        format!("@mixin {name}"),
         0
     );
     tree_node.children = children;
@@ -141,7 +141,7 @@ fn declaration_to_tree(node: &Node, source: &str) -> Option<Rc<TreeNode>> {
     
     let tree_node = TreeNode::new(
         "declaration".to_string(),
-        format!("{}: {}{}", property, value, important_suffix),
+        format!("{property}: {value}{important_suffix}"),
         0
     );
     Some(Rc::new(tree_node))

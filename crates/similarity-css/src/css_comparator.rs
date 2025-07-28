@@ -142,13 +142,13 @@ fn tokenize_selector(selector: &str) -> std::collections::HashSet<String> {
         
         let classes: Vec<String> = part.split('.')
             .filter(|s| !s.is_empty())
-            .map(|s| format!(".{}", s))
+            .map(|s| format!(".{s}"))
             .collect();
         tokens.extend(classes);
         
         let ids: Vec<String> = part.split('#')
             .filter(|s| !s.is_empty())
-            .map(|s| format!("#{}", s))
+            .map(|s| format!("#{s}"))
             .collect();
         tokens.extend(ids);
         

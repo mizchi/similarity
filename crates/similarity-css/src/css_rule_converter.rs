@@ -78,7 +78,7 @@ fn create_rule_tree_node(selector: &str, declarations: &[(String, String)]) -> R
     
     // Add declaration nodes as children
     for (i, (prop, value)) in declarations.iter().enumerate() {
-        let decl_label = format!("{}: {}", prop, value);
+        let decl_label = format!("{prop}: {value}");
         let decl_node = TreeNode::new(decl_label, value.clone(), i + 1);
         rule_node.add_child(Rc::new(decl_node));
     }

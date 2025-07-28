@@ -1,8 +1,9 @@
-use similarity_css::{CssParser, compare_css_rules, CssRule};
+use similarity_css::{CssParser, CssRule};
 use similarity_core::language_parser::LanguageParser;
 use similarity_core::tree::TreeNode;
 use std::rc::Rc;
 
+#[allow(dead_code)]
 /// Helper to create CSS rules from parsed functions
 fn create_rules_from_functions(functions: Vec<similarity_core::language_parser::GenericFunctionDef>) -> Vec<CssRule> {
     functions.into_iter()
@@ -11,7 +12,7 @@ fn create_rules_from_functions(functions: Vec<similarity_core::language_parser::
             let declarations = extract_declarations_from_name(&func.name);
             
             // Create a simple tree for testing
-            let mut tree = TreeNode::new(
+            let tree = TreeNode::new(
                 "rule".to_string(),
                 func.name.clone(),
                 0
@@ -28,6 +29,7 @@ fn create_rules_from_functions(functions: Vec<similarity_core::language_parser::
         .collect()
 }
 
+#[allow(dead_code)]
 /// Simple declaration extractor for testing
 fn extract_declarations_from_name(_selector: &str) -> Vec<(String, String)> {
     // For testing purposes, we'll return empty declarations

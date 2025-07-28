@@ -62,8 +62,8 @@ $border-width: 2px;
     
     // They should be similar but not identical (variables vs hardcoded)
     if button_rules.len() == 2 {
-        let similarity = calculate_rule_similarity(&button_rules[0], &button_rules[1]);
-        println!("Similarity between .button and .btn: {}", similarity);
+        let similarity = calculate_rule_similarity(button_rules[0], button_rules[1]);
+        println!("Similarity between .button and .btn: {similarity}");
         println!("Button 1: {:?}", button_rules[0].declarations);
         println!("Button 2: {:?}", button_rules[1].declarations);
         // Note: SCSS variables are not expanded in our simple parser,
@@ -453,11 +453,11 @@ fn test_scss_each_and_for_patterns() {
     let bg_rules = rules.iter().filter(|r| r.name.starts_with(".bg-")).count();
     let col_rules = rules.iter().filter(|r| r.name.starts_with(".col-")).count();
     
-    println!("Margin utilities: {}", margin_rules);
-    println!("Padding utilities: {}", padding_rules);
-    println!("Text color utilities: {}", text_rules);
-    println!("Background utilities: {}", bg_rules);
-    println!("Column utilities: {}", col_rules);
+    println!("Margin utilities: {margin_rules}");
+    println!("Padding utilities: {padding_rules}");
+    println!("Text color utilities: {text_rules}");
+    println!("Background utilities: {bg_rules}");
+    println!("Column utilities: {col_rules}");
     
     assert_eq!(margin_rules, 6, "Should have 6 margin utilities");
     assert_eq!(padding_rules, 6, "Should have 6 padding utilities");
@@ -559,7 +559,7 @@ fn test_attribute_selectors_and_combinators() {
     
     println!("Attribute selectors found:");
     for sel in &attr_selectors {
-        println!("  - {}", sel);
+        println!("  - {sel}");
     }
     
     assert!(!attr_selectors.is_empty(), "Should find attribute selectors");

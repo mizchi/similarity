@@ -8,11 +8,11 @@ fn test_expansion_performance() {
     
     // Generate a large number of declarations
     for i in 0..1000 {
-        declarations.push((format!("margin-{}", i), "10px 20px 30px 40px".to_string()));
-        declarations.push((format!("padding-{}", i), "5px 10px".to_string()));
-        declarations.push((format!("border-{}", i), "1px solid black".to_string()));
-        declarations.push((format!("flex-{}", i), "1 1 auto".to_string()));
-        declarations.push((format!("gap-{}", i), "10px 20px".to_string()));
+        declarations.push((format!("margin-{i}"), "10px 20px 30px 40px".to_string()));
+        declarations.push((format!("padding-{i}"), "5px 10px".to_string()));
+        declarations.push((format!("border-{i}"), "1px solid black".to_string()));
+        declarations.push((format!("flex-{i}"), "1 1 auto".to_string()));
+        declarations.push((format!("gap-{i}"), "10px 20px".to_string()));
     }
     
     let start = Instant::now();
