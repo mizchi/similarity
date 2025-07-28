@@ -12,6 +12,7 @@ High-performance code similarity detection tools written in Rust. Detects duplic
 | **similarity-elixir**  | Elixir                    | 🧪 **Experimental**     | Early development stage           |
 | **similarity-generic** | Go, Java, C/C++, C#, Ruby | 🧪 **Experimental**     | Early development stage           |
 | **similarity-md**      | Markdown                  | 🧪 **Experimental**     | Early development stage           |
+| **similarity-css**     | CSS/SCSS                  | 🧪 **Experimental**     | Prototype implementation          |
 
 ## Features
 
@@ -80,6 +81,7 @@ The AI will analyze patterns and suggest refactoring strategies.
 - **similarity-elixir** - Elixir similarity detection 🧪 _Experimental_
 - **similarity-generic** - Generic similarity detection for Go, Java, C/C++, C#, Ruby 🧪 _Experimental_
 - **similarity-md** - Markdown similarity detection 🧪 _Experimental_
+- **similarity-css** - CSS/SCSS similarity detection 🧪 _Experimental_ - Detects duplicate styles and BEM variations
 
 ## Installation
 
