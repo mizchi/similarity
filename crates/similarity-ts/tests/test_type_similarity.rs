@@ -273,9 +273,10 @@ interface Config {
         .arg("0.9")
         .assert()
         .success()
-        .stdout(predicate::str::contains("No similar types found").or(
-            predicate::str::contains("Total duplicate pairs found: 0")
-        ));
+        .stdout(
+            predicate::str::contains("No similar types found")
+                .or(predicate::str::contains("Total duplicate pairs found: 0")),
+        );
 }
 
 #[test]

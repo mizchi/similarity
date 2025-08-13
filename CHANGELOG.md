@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2025-01-21
+
+### Fixed
+- Fixed `--exclude` option to properly handle relative directory paths (e.g., `tests/fixtures`)
+- Improved exclude pattern matching with automatic wildcard expansion
+- Fixed clippy warnings and code formatting issues
+- Confirmed `.gitignore` is properly respected by default
+
+### Changed
+- `--exclude` patterns now automatically expand to match both files and directories
+- Example: `--exclude="tests"` now matches `tests/`, `**/tests/`, and `tests/**`
+
 ## [0.4.0] - 2025-01-21
 
 ### Added

@@ -1,6 +1,9 @@
 #![allow(clippy::uninlined_format_args)]
 
-use similarity_core::{language_parser::LanguageParser, tsed::{calculate_tsed, TSEDOptions}};
+use similarity_core::{
+    language_parser::LanguageParser,
+    tsed::{calculate_tsed, TSEDOptions},
+};
 use similarity_rs::rust_parser::RustParser;
 
 #[test]
@@ -26,9 +29,9 @@ fn test_different_functions_should_have_low_similarity() {
 
     let options = TSEDOptions::default();
     let similarity = calculate_tsed(&tree1, &tree2, &options);
-    
+
     println!("Similarity between addition and loop: {:.2}%", similarity * 100.0);
-    
+
     // These are completely different - similarity should be low
     assert!(similarity < 0.5, "Different functions should have low similarity, got {}", similarity);
 }
@@ -51,9 +54,9 @@ fn test_similar_functions_should_have_high_similarity() {
 
     let options = TSEDOptions::default();
     let similarity = calculate_tsed(&tree1, &tree2, &options);
-    
+
     println!("Similarity between similar functions: {:.2}%", similarity * 100.0);
-    
+
     // These are very similar - similarity should be high
     assert!(similarity > 0.8, "Similar functions should have high similarity, got {}", similarity);
 }
@@ -67,7 +70,7 @@ fn test_ast_tree_structure() {
 
     let mut parser = RustParser::new().unwrap();
     let tree = parser.parse(code, "test.rs").unwrap();
-    
+
     fn print_tree(node: &similarity_core::tree::TreeNode, depth: usize) {
         let indent = "  ".repeat(depth);
         if node.value.is_empty() {
@@ -79,10 +82,10 @@ fn test_ast_tree_structure() {
             print_tree(child, depth + 1);
         }
     }
-    
+
     println!("=== AST Structure ===");
     print_tree(&tree, 0);
-    
+
     // Check that the tree has reasonable structure
     assert!(tree.get_subtree_size() > 5, "Tree should have multiple nodes");
 }

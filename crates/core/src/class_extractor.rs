@@ -56,11 +56,7 @@ struct ClassExtractor {
 impl ClassExtractor {
     fn new(source_text: String, file_path: String) -> Self {
         let line_offsets = Self::calculate_line_offsets(&source_text);
-        Self {
-            source_text,
-            file_path,
-            line_offsets,
-        }
+        Self { source_text, file_path, line_offsets }
     }
 
     fn calculate_line_offsets(source: &str) -> Vec<usize> {
@@ -82,7 +78,7 @@ impl ClassExtractor {
 
     fn extract_type_string(&self, type_annotation: &oxc_ast::ast::TSTypeAnnotation) -> String {
         use oxc_ast::ast::TSType;
-        
+
         match &type_annotation.type_annotation {
             TSType::TSStringKeyword(_) => "string".to_string(),
             TSType::TSNumberKeyword(_) => "number".to_string(),
@@ -111,13 +107,10 @@ impl ClassExtractor {
                     }
                 }
                 _ => "unknown".to_string(),
-            }
+            },
             TSType::TSUnionType(union) => {
-                let types: Vec<String> = union
-                    .types
-                    .iter()
-                    .map(|t| self.extract_type_string_from_ts_type(t))
-                    .collect();
+                let types: Vec<String> =
+                    union.types.iter().map(|t| self.extract_type_string_from_ts_type(t)).collect();
                 types.join(" | ")
             }
             TSType::TSIntersectionType(intersection) => {
@@ -130,7 +123,8 @@ impl ClassExtractor {
             }
             TSType::TSFunctionType(func) => {
                 let params = self.extract_function_params(&func.params);
-                let return_type = self.extract_type_string_from_ts_type(&func.return_type.type_annotation);
+                let return_type =
+                    self.extract_type_string_from_ts_type(&func.return_type.type_annotation);
                 format!("({}) => {}", params, return_type)
             }
             TSType::TSTypeLiteral(literal) => {
@@ -168,7 +162,7 @@ impl ClassExtractor {
 
     fn extract_type_string_from_ts_type(&self, ts_type: &oxc_ast::ast::TSType) -> String {
         use oxc_ast::ast::TSType;
-        
+
         match ts_type {
             TSType::TSStringKeyword(_) => "string".to_string(),
             TSType::TSNumberKeyword(_) => "number".to_string(),
@@ -187,13 +181,10 @@ impl ClassExtractor {
                     ident.name.as_str().to_string()
                 }
                 _ => "unknown".to_string(),
-            }
+            },
             TSType::TSUnionType(union) => {
-                let types: Vec<String> = union
-                    .types
-                    .iter()
-                    .map(|t| self.extract_type_string_from_ts_type(t))
-                    .collect();
+                let types: Vec<String> =
+                    union.types.iter().map(|t| self.extract_type_string_from_ts_type(t)).collect();
                 types.join(" | ")
             }
             TSType::TSIntersectionType(intersection) => {
@@ -206,7 +197,8 @@ impl ClassExtractor {
             }
             TSType::TSFunctionType(func) => {
                 let params = self.extract_function_params(&func.params);
-                let return_type = self.extract_type_string_from_ts_type(&func.return_type.type_annotation);
+                let return_type =
+                    self.extract_type_string_from_ts_type(&func.return_type.type_annotation);
                 format!("({}) => {}", params, return_type)
             }
             TSType::TSTypeLiteral(literal) => {
@@ -413,11 +405,8 @@ impl ClassExtractor {
         let ret = Parser::new(&allocator, &self.source_text, source_type).parse();
 
         if !ret.errors.is_empty() {
-            let error_messages: Vec<String> = ret
-                .errors
-                .iter()
-                .map(|e| format!("{:?}", e))
-                .collect();
+            let error_messages: Vec<String> =
+                ret.errors.iter().map(|e| format!("{:?}", e)).collect();
             return Err(format!("Parse errors: {}", error_messages.join(", ")));
         }
 
@@ -427,12 +416,16 @@ impl ClassExtractor {
         for statement in &ret.program.body {
             match statement {
                 Statement::ExportDefaultDeclaration(export) => {
-                    if let oxc_ast::ast::ExportDefaultDeclarationKind::ClassDeclaration(class) = &export.declaration {
+                    if let oxc_ast::ast::ExportDefaultDeclarationKind::ClassDeclaration(class) =
+                        &export.declaration
+                    {
                         classes.push(self.extract_class(class));
                     }
                 }
                 Statement::ExportNamedDeclaration(export) => {
-                    if let Some(oxc_ast::ast::Declaration::ClassDeclaration(class)) = &export.declaration {
+                    if let Some(oxc_ast::ast::Declaration::ClassDeclaration(class)) =
+                        &export.declaration
+                    {
                         classes.push(self.extract_class(class));
                     }
                 }
@@ -447,7 +440,10 @@ impl ClassExtractor {
     }
 }
 
-pub fn extract_classes_from_code(code: &str, file_path: &str) -> Result<Vec<ClassDefinition>, String> {
+pub fn extract_classes_from_code(
+    code: &str,
+    file_path: &str,
+) -> Result<Vec<ClassDefinition>, String> {
     let extractor = ClassExtractor::new(code.to_string(), file_path.to_string());
     extractor.extract_classes()
 }

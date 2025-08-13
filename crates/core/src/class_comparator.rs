@@ -94,12 +94,7 @@ fn normalize_parameters(params: &[String]) -> Vec<String> {
 
 fn normalize_type(type_str: &str) -> String {
     // Basic normalization - can be expanded
-    type_str
-        .replace("Array<", "[")
-        .replace(">", "]")
-        .replace(" ", "")
-        .trim()
-        .to_string()
+    type_str.replace("Array<", "[").replace(">", "]").replace(" ", "").trim().to_string()
 }
 
 pub fn compare_classes(
@@ -118,12 +113,7 @@ pub fn compare_classes(
     // Combined similarity (weighted average)
     let similarity = 0.3 * naming_similarity + 0.7 * structural_similarity;
 
-    ClassComparisonResult {
-        similarity,
-        structural_similarity,
-        naming_similarity,
-        differences,
-    }
+    ClassComparisonResult { similarity, structural_similarity, naming_similarity, differences }
 }
 
 fn calculate_name_similarity(name1: &str, name2: &str) -> f64 {
@@ -134,7 +124,7 @@ fn calculate_name_similarity(name1: &str, name2: &str) -> f64 {
     // Calculate Levenshtein distance
     let distance = levenshtein_distance(name1, name2);
     let max_len = name1.len().max(name2.len()) as f64;
-    
+
     if max_len > 0.0 {
         1.0 - (distance as f64 / max_len)
     } else {
@@ -149,11 +139,11 @@ fn calculate_structural_similarity(
     let mut missing_properties = Vec::new();
     let mut extra_properties = Vec::new();
     let mut property_type_mismatches = Vec::new();
-    
+
     // Check properties
     let mut property_matches = 0;
     let mut property_total = 0;
-    
+
     for (name, prop1) in &class1.properties {
         property_total += 1;
         if let Some(prop2) = class2.properties.get(name) {
@@ -170,28 +160,28 @@ fn calculate_structural_similarity(
             missing_properties.push(name.clone());
         }
     }
-    
+
     for name in class2.properties.keys() {
         if !class1.properties.contains_key(name) {
             extra_properties.push(name.clone());
             property_total += 1;
         }
     }
-    
+
     // Check methods
     let mut missing_methods = Vec::new();
     let mut extra_methods = Vec::new();
     let mut method_signature_mismatches = Vec::new();
-    
+
     let mut method_matches = 0;
     let mut method_total = 0;
-    
+
     for (name, method1) in &class1.methods {
         method_total += 1;
         if let Some(method2) = class2.methods.get(name) {
             let sig1 = format!("({}) => {}", method1.parameters.join(", "), method1.return_type);
             let sig2 = format!("({}) => {}", method2.parameters.join(", "), method2.return_type);
-            
+
             if sig1 == sig2 {
                 method_matches += 1;
             } else {
@@ -205,24 +195,21 @@ fn calculate_structural_similarity(
             missing_methods.push(name.clone());
         }
     }
-    
+
     for name in class2.methods.keys() {
         if !class1.methods.contains_key(name) {
             extra_methods.push(name.clone());
             method_total += 1;
         }
     }
-    
+
     // Calculate overall structural similarity
     let total_elements = property_total + method_total;
     let matched_elements = property_matches + method_matches;
-    
-    let structural_similarity = if total_elements > 0 {
-        matched_elements as f64 / total_elements as f64
-    } else {
-        1.0
-    };
-    
+
+    let structural_similarity =
+        if total_elements > 0 { matched_elements as f64 / total_elements as f64 } else { 1.0 };
+
     let differences = ClassDifferences {
         missing_properties,
         extra_properties,
@@ -231,7 +218,7 @@ fn calculate_structural_similarity(
         property_type_mismatches,
         method_signature_mismatches,
     };
-    
+
     (structural_similarity, differences)
 }
 
@@ -239,41 +226,37 @@ fn levenshtein_distance(s1: &str, s2: &str) -> usize {
     let len1 = s1.len();
     let len2 = s2.len();
     let mut matrix = vec![vec![0; len2 + 1]; len1 + 1];
-    
+
+    #[allow(clippy::needless_range_loop)]
     for i in 0..=len1 {
         matrix[i][0] = i;
     }
-    
+
+    #[allow(clippy::needless_range_loop)]
     for j in 0..=len2 {
         matrix[0][j] = j;
     }
-    
+
     for (i, c1) in s1.chars().enumerate() {
         for (j, c2) in s2.chars().enumerate() {
             let cost = if c1 == c2 { 0 } else { 1 };
             matrix[i + 1][j + 1] = std::cmp::min(
-                std::cmp::min(
-                    matrix[i][j + 1] + 1,
-                    matrix[i + 1][j] + 1
-                ),
-                matrix[i][j] + cost
+                std::cmp::min(matrix[i][j + 1] + 1, matrix[i + 1][j] + 1),
+                matrix[i][j] + cost,
             );
         }
     }
-    
+
     matrix[len1][len2]
 }
 
-pub fn find_similar_classes(
-    classes: &[ClassDefinition],
-    threshold: f64,
-) -> Vec<SimilarClassPair> {
+pub fn find_similar_classes(classes: &[ClassDefinition], threshold: f64) -> Vec<SimilarClassPair> {
     let mut similar_pairs = Vec::new();
-    
+
     for i in 0..classes.len() {
         for j in i + 1..classes.len() {
             let result = compare_classes(&classes[i], &classes[j]);
-            
+
             if result.similarity >= threshold {
                 similar_pairs.push(SimilarClassPair {
                     class1: classes[i].clone(),
@@ -283,15 +266,12 @@ pub fn find_similar_classes(
             }
         }
     }
-    
+
     // Sort by similarity (highest first)
     similar_pairs.sort_by(|a, b| {
-        b.result
-            .similarity
-            .partial_cmp(&a.result.similarity)
-            .unwrap_or(std::cmp::Ordering::Equal)
+        b.result.similarity.partial_cmp(&a.result.similarity).unwrap_or(std::cmp::Ordering::Equal)
     });
-    
+
     similar_pairs
 }
 
@@ -300,12 +280,12 @@ pub fn find_similar_classes_across_files(
     threshold: f64,
 ) -> Vec<SimilarClassPair> {
     let mut all_classes = Vec::new();
-    
+
     for (file_path, content) in files {
         if let Ok(classes) = crate::class_extractor::extract_classes_from_code(content, file_path) {
             all_classes.extend(classes);
         }
     }
-    
+
     find_similar_classes(&all_classes, threshold)
 }

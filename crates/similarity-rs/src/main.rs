@@ -98,7 +98,7 @@ fn main() -> Result<()> {
     let functions_enabled = !cli.no_functions;
     let types_enabled = cli.types;
     let overlap_enabled = cli.overlap;
-    
+
     // Validate that at least one analyzer is enabled
     if !functions_enabled && !types_enabled && !overlap_enabled {
         eprintln!("Error: At least one analyzer must be enabled. Use --experimental-types to enable type checking, --experimental-overlap for overlap detection, or remove --no-functions.");
@@ -135,7 +135,7 @@ fn main() -> Result<()> {
     if types_enabled && functions_enabled {
         println!("\n{separator}\n");
     }
-    
+
     if types_enabled {
         println!("=== Type Similarity (Structs & Enums) ===");
         let type_duplicate_count = check_types::check_types(

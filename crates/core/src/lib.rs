@@ -41,9 +41,6 @@ pub use tree::TreeNode;
 pub use tsed::{calculate_tsed, calculate_tsed_from_code, TSEDOptions};
 
 // Type-related exports
-pub use unified_type_comparator::{
-    find_similar_unified_types, UnifiedType, UnifiedTypeComparisonPair,
-};
 pub use type_comparator::{
     compare_type_literal_with_type, compare_types, find_duplicate_types,
     find_similar_type_literals, find_similar_type_literals_pairs, find_similar_types,
@@ -58,6 +55,9 @@ pub use type_extractor::{
 pub use type_normalizer::{
     calculate_property_similarity, calculate_type_similarity, find_property_matches,
     normalize_type, NormalizationOptions, NormalizedType, PropertyMatch,
+};
+pub use unified_type_comparator::{
+    find_similar_unified_types, UnifiedType, UnifiedTypeComparisonPair,
 };
 
 // Fast similarity exports
@@ -86,12 +86,12 @@ pub use generic_overlap_detector::{
 };
 
 // Class-related exports
-pub use class_extractor::{
-    extract_classes_from_code, extract_classes_from_files, ClassDefinition, ClassMethod,
-    ClassProperty, MethodKind,
-};
 pub use class_comparator::{
     compare_classes, find_similar_classes, find_similar_classes_across_files, normalize_class,
     ClassComparisonResult, ClassDifferences, MethodMismatch, NormalizedClass, PropertyMismatch,
     SimilarClassPair,
+};
+pub use class_extractor::{
+    extract_classes_from_code, extract_classes_from_files, ClassDefinition, ClassMethod,
+    ClassProperty, MethodKind,
 };

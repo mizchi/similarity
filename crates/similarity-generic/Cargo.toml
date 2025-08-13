@@ -1,6 +1,6 @@
 [package]
 name = "similarity-generic"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 license = "MIT"
 description = "Generic language similarity analyzer using tree-sitter"
@@ -13,7 +13,7 @@ name = "similarity-generic"
 path = "src/main.rs"
 
 [dependencies]
-similarity-core = { version = "0.4.0", path = "../core" }
+similarity-core = { version = "0.4.1", path = "../core" }
 clap = { version = "4.0", features = ["derive"] }
 anyhow = "1.0"
 tree-sitter = { workspace = true }

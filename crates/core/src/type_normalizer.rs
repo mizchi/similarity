@@ -144,20 +144,20 @@ pub fn normalize_type_name(type_name: &str) -> String {
 /// Converts arrow functions to method syntax: `() => T` becomes `(): T`
 fn normalize_function_syntax(type_str: &str) -> String {
     let mut result = type_str.to_string();
-    
+
     // Find and replace arrow function patterns
     // We need to be careful with nested types and preserve them correctly
-    
+
     // Simple pattern: () => Type
     if let Some(arrow_pos) = result.find(" => ") {
         // Check if this is a function type at the top level
         // Find the matching opening parenthesis
         let before_arrow = &result[..arrow_pos];
-        
+
         // Count parentheses to find the start of the function signature
         let mut paren_count = 0;
         let mut func_start = None;
-        
+
         for (i, ch) in before_arrow.chars().rev().enumerate() {
             match ch {
                 ')' => paren_count += 1,
@@ -177,25 +177,26 @@ fn normalize_function_syntax(type_str: &str) -> String {
                 }
             }
         }
-        
+
         if let Some(start) = func_start {
             // Check if this looks like a function signature
             let func_params = &result[start..arrow_pos].trim();
             if func_params.starts_with('(') && func_params.ends_with(')') {
                 // Extract return type (everything after =>)
                 let return_type = result[arrow_pos + 4..].trim();
-                
+
                 // Build the normalized version
-                result = format!("{}{}: {}{}", 
+                result = format!(
+                    "{}{}: {}{}",
                     &result[..start],
                     func_params,
                     return_type,
-                    ""  // We might have more content after
+                    "" // We might have more content after
                 );
             }
         }
     }
-    
+
     result
 }
 
@@ -354,22 +355,22 @@ pub struct PropertyMatch {
 pub fn find_property_matches(
     type1: &NormalizedType,
     type2: &NormalizedType,
-    _threshold: f64,  // Keep for API compatibility but not used
+    _threshold: f64, // Keep for API compatibility but not used
 ) -> Vec<PropertyMatch> {
     let mut matches = Vec::new();
 
     // Only match properties with exactly the same name
     for (prop1, type1_annotation) in &type1.properties {
         if let Some(type2_annotation) = type2.properties.get(prop1) {
-            let name_similarity = 1.0;  // Exact match only
+            let name_similarity = 1.0; // Exact match only
             let type_similarity = calculate_type_similarity(type1_annotation, type2_annotation);
-            
+
             // Since names must match exactly, overall similarity is just type similarity
             let overall_similarity = type_similarity;
-            
+
             matches.push(PropertyMatch {
                 prop1: prop1.clone(),
-                prop2: prop1.clone(),  // Same property name
+                prop2: prop1.clone(), // Same property name
                 name_similarity,
                 type_similarity,
                 overall_similarity,

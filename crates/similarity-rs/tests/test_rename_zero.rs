@@ -1,6 +1,9 @@
 #![allow(clippy::uninlined_format_args)]
 
-use similarity_core::{language_parser::LanguageParser, tsed::{calculate_tsed, TSEDOptions}};
+use similarity_core::{
+    language_parser::LanguageParser,
+    tsed::{calculate_tsed, TSEDOptions},
+};
 use similarity_rs::rust_parser::RustParser;
 
 #[test]
@@ -23,7 +26,7 @@ fn test_rename_cost_zero() {
     let mut options = TSEDOptions::default();
     options.apted_options.rename_cost = 0.0;
     options.apted_options.compare_values = true;
-    
+
     let similarity = calculate_tsed(&tree1, &tree2, &options);
     println!("With compare_values=true, rename_cost=0.0: {:.2}%", similarity * 100.0);
 
@@ -31,7 +34,7 @@ fn test_rename_cost_zero() {
     options.apted_options.compare_values = false;
     let similarity2 = calculate_tsed(&tree1, &tree2, &options);
     println!("With compare_values=false, rename_cost=0.0: {:.2}%", similarity2 * 100.0);
-    
+
     // デフォルト設定
     let options_default = TSEDOptions::default();
     let similarity3 = calculate_tsed(&tree1, &tree2, &options_default);

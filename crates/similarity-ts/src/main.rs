@@ -29,7 +29,7 @@ struct Cli {
     /// Enable type similarity checking (includes type literals by default)
     #[arg(long = "types", default_value = "true")]
     types: bool,
-    
+
     /// Disable type similarity checking
     #[arg(long = "no-types", conflicts_with = "types")]
     no_types: bool,
@@ -37,19 +37,19 @@ struct Cli {
     /// Enable class similarity checking
     #[arg(long = "classes", default_value = "false")]
     classes: bool,
-    
+
     /// Only check classes (exclude functions and types)
     #[arg(long)]
     classes_only: bool,
-    
+
     /// Include classes with inheritance (extends) - excluded by default
     #[arg(long)]
     include_inheritance: bool,
-    
+
     /// Include classes with interface implementation (implements) - excluded by default
     #[arg(long)]
     include_implements: bool,
-    
+
     /// Show refactoring suggestions for excluded classes
     #[arg(long)]
     suggest: bool,
@@ -109,11 +109,11 @@ struct Cli {
     /// Only check type literals (excludes type aliases and interfaces)
     #[arg(long)]
     type_literals_only: bool,
-    
+
     /// Enable unified type comparison (default: true - compares across type aliases, interfaces, and type literals)
     #[arg(long, default_value = "true")]
     unified_types: bool,
-    
+
     /// Disable unified type comparison
     #[arg(long, conflicts_with = "unified_types")]
     no_unified_types: bool,
@@ -155,7 +155,7 @@ fn main() -> anyhow::Result<()> {
     let classes_enabled = cli.classes || cli.classes_only;
     let overlap_enabled = cli.overlap;
     let unified_types_enabled = cli.unified_types && !cli.no_unified_types;
-    let include_type_literals = true;  // Always include type literals
+    let include_type_literals = true; // Always include type literals
 
     // Validate that at least one analyzer is enabled
     if !functions_enabled && !types_enabled && !classes_enabled && !overlap_enabled {
@@ -280,10 +280,30 @@ fn create_exclude_matcher(exclude_patterns: &[String]) -> Option<globset::GlobSe
 
     let mut builder = globset::GlobSetBuilder::new();
     for pattern in exclude_patterns {
+        // Add the pattern as-is
         if let Ok(glob) = globset::Glob::new(pattern) {
             builder.add(glob);
-        } else {
-            eprintln!("Warning: Invalid glob pattern: {}", pattern);
+        }
+
+        // If the pattern doesn't start with **, also add a **/ prefix version
+        // This allows "tests/fixtures" to match "any/path/tests/fixtures"
+        if !pattern.starts_with("**") {
+            let prefixed = format!("**/{}", pattern);
+            if let Ok(glob) = globset::Glob::new(&prefixed) {
+                builder.add(glob);
+            }
+
+            // Also add a suffix version for matching files within the directory
+            let suffixed = format!("{}/**", pattern.trim_end_matches('/'));
+            if let Ok(glob) = globset::Glob::new(&suffixed) {
+                builder.add(glob);
+            }
+
+            // And both prefix and suffix
+            let both = format!("**/{}", suffixed);
+            if let Ok(glob) = globset::Glob::new(&both) {
+                builder.add(glob);
+            }
         }
     }
 
@@ -309,7 +329,8 @@ fn check_types(
     use ignore::WalkBuilder;
     use similarity_core::{
         extract_type_literals_from_code, extract_types_from_code, find_similar_type_literals,
-        find_similar_types, find_similar_unified_types, UnifiedType, TypeComparisonOptions, TypeKind,
+        find_similar_types, find_similar_unified_types, TypeComparisonOptions, TypeKind,
+        UnifiedType,
     };
     use std::collections::HashSet;
     use std::fs;
@@ -342,7 +363,12 @@ fn check_types(
             }
         } else if path.is_dir() {
             // If it's a directory, walk it respecting .gitignore
-            let walker = WalkBuilder::new(path).follow_links(false).build();
+            let walker = WalkBuilder::new(path)
+                .follow_links(false)
+                .git_ignore(true) // Respect .gitignore files
+                .git_global(true) // Respect global gitignore
+                .git_exclude(true) // Respect .git/info/exclude
+                .build();
 
             for entry in walker {
                 let entry = entry?;
@@ -355,8 +381,18 @@ fn check_types(
 
                 // Check if path should be excluded
                 if let Some(ref matcher) = exclude_matcher {
+                    // Check both the full path and relative path from the search root
                     if matcher.is_match(entry_path) {
                         continue;
+                    }
+
+                    // Also check relative path from current directory
+                    if let Ok(current_dir) = std::env::current_dir() {
+                        if let Ok(relative) = entry_path.strip_prefix(&current_dir) {
+                            if matcher.is_match(relative) {
+                                continue;
+                            }
+                        }
                     }
                 }
 
@@ -463,13 +499,14 @@ fn check_types(
     // Handle unified type comparison if enabled
     let (similar_pairs, type_literal_pairs, type_literal_to_literal_pairs) = if unified_types {
         // Use unified comparison that combines all types
-        let unified_pairs = find_similar_unified_types(&all_types, &all_type_literals, threshold, &options);
-        
+        let unified_pairs =
+            find_similar_unified_types(&all_types, &all_type_literals, threshold, &options);
+
         // Convert unified pairs to the existing format for display (for now)
         let mut regular_pairs = Vec::new();
         let mut literal_to_def_pairs = Vec::new();
         let mut literal_to_literal_pairs = Vec::new();
-        
+
         for pair in unified_pairs {
             match (&pair.type1, &pair.type2) {
                 (UnifiedType::TypeDef(def1), UnifiedType::TypeDef(def2)) => {
@@ -479,8 +516,8 @@ fn check_types(
                         result: pair.result,
                     });
                 }
-                (UnifiedType::TypeLiteral(lit), UnifiedType::TypeDef(def)) |
-                (UnifiedType::TypeDef(def), UnifiedType::TypeLiteral(lit)) => {
+                (UnifiedType::TypeLiteral(lit), UnifiedType::TypeDef(def))
+                | (UnifiedType::TypeDef(def), UnifiedType::TypeLiteral(lit)) => {
                     literal_to_def_pairs.push(similarity_core::TypeLiteralComparisonPair {
                         type_literal: lit.clone(),
                         type_definition: def.clone(),
@@ -492,7 +529,7 @@ fn check_types(
                 }
             }
         }
-        
+
         (regular_pairs, literal_to_def_pairs, literal_to_literal_pairs)
     } else {
         // Use existing separate comparison methods
@@ -507,17 +544,24 @@ fn check_types(
         } else {
             Vec::new()
         };
-        
+
         let type_literal_to_literal_pairs = if include_type_literals {
-            similarity_core::find_similar_type_literals_pairs(&all_type_literals, threshold, &options)
+            similarity_core::find_similar_type_literals_pairs(
+                &all_type_literals,
+                threshold,
+                &options,
+            )
         } else {
             Vec::new()
         };
-        
+
         (similar_pairs, type_literal_pairs, type_literal_to_literal_pairs)
     };
 
-    if similar_pairs.is_empty() && type_literal_pairs.is_empty() && type_literal_to_literal_pairs.is_empty() {
+    if similar_pairs.is_empty()
+        && type_literal_pairs.is_empty()
+        && type_literal_to_literal_pairs.is_empty()
+    {
         println!("\nNo similar types found!");
     } else {
         if !similar_pairs.is_empty() {
@@ -604,15 +648,15 @@ fn check_types(
 
             println!("\nTotal type literal pairs found: {}", type_literal_pairs.len());
         }
-        
+
         if !type_literal_to_literal_pairs.is_empty() {
             println!("\nSimilar type literals found:");
             println!("{}", "-".repeat(60));
-            
+
             for (literal1, literal2, result) in &type_literal_to_literal_pairs {
                 let path1 = get_relative_path(&literal1.file_path);
                 let path2 = get_relative_path(&literal2.file_path);
-                
+
                 println!(
                     "\nSimilarity: {:.2}% (structural: {:.2}%, naming: {:.2}%)",
                     result.similarity * 100.0,
@@ -621,27 +665,24 @@ fn check_types(
                 );
                 println!(
                     "  {}:{} | L{} type-literal: {}",
-                    path1,
-                    literal1.start_line,
-                    literal1.start_line,
-                    literal1.name
+                    path1, literal1.start_line, literal1.start_line, literal1.name
                 );
                 println!(
                     "  {}:{} | L{} type-literal: {}",
-                    path2,
-                    literal2.start_line,
-                    literal2.start_line,
-                    literal2.name
+                    path2, literal2.start_line, literal2.start_line, literal2.name
                 );
-                
+
                 if print {
                     show_type_literal_details(&literal1);
                     show_type_literal_details(&literal2);
                     show_comparison_details(&result);
                 }
             }
-            
-            println!("\nTotal similar type literal pairs found: {}", type_literal_to_literal_pairs.len());
+
+            println!(
+                "\nTotal similar type literal pairs found: {}",
+                type_literal_to_literal_pairs.len()
+            );
         }
     }
 
@@ -765,7 +806,12 @@ fn check_overlaps(
             }
         } else if path.is_dir() {
             // If it's a directory, walk it respecting .gitignore
-            let walker = WalkBuilder::new(path).follow_links(false).build();
+            let walker = WalkBuilder::new(path)
+                .follow_links(false)
+                .git_ignore(true) // Respect .gitignore files
+                .git_global(true) // Respect global gitignore
+                .git_exclude(true) // Respect .git/info/exclude
+                .build();
 
             for entry in walker {
                 let entry = entry?;
@@ -778,8 +824,18 @@ fn check_overlaps(
 
                 // Check if path should be excluded
                 if let Some(ref matcher) = exclude_matcher {
+                    // Check both the full path and relative path from the search root
                     if matcher.is_match(entry_path) {
                         continue;
+                    }
+
+                    // Also check relative path from current directory
+                    if let Ok(current_dir) = std::env::current_dir() {
+                        if let Ok(relative) = entry_path.strip_prefix(&current_dir) {
+                            if matcher.is_match(relative) {
+                                continue;
+                            }
+                        }
                     }
                 }
 
@@ -977,7 +1033,12 @@ fn check_classes(
             }
         } else if path.is_dir() {
             // If it's a directory, walk it respecting .gitignore
-            let walker = WalkBuilder::new(path).follow_links(false).build();
+            let walker = WalkBuilder::new(path)
+                .follow_links(false)
+                .git_ignore(true) // Respect .gitignore files
+                .git_global(true) // Respect global gitignore
+                .git_exclude(true) // Respect .git/info/exclude
+                .build();
 
             for entry in walker {
                 let entry = entry?;
@@ -990,8 +1051,18 @@ fn check_classes(
 
                 // Check if path should be excluded
                 if let Some(ref matcher) = exclude_matcher {
+                    // Check both the full path and relative path from the search root
                     if matcher.is_match(entry_path) {
                         continue;
+                    }
+
+                    // Also check relative path from current directory
+                    if let Ok(current_dir) = std::env::current_dir() {
+                        if let Ok(relative) = entry_path.strip_prefix(&current_dir) {
+                            if matcher.is_match(relative) {
+                                continue;
+                            }
+                        }
                     }
                 }
 
@@ -1036,8 +1107,9 @@ fn check_classes(
                         for class in classes {
                             // Check if class should be excluded
                             let excluded_by_inheritance = no_inheritance && class.extends.is_some();
-                            let excluded_by_implements = no_implements && !class.implements.is_empty();
-                            
+                            let excluded_by_implements =
+                                no_implements && !class.implements.is_empty();
+
                             if excluded_by_inheritance || excluded_by_implements {
                                 excluded_classes.push(class);
                             } else {
@@ -1065,7 +1137,7 @@ fn check_classes(
     }
 
     println!("Found {} class definitions", all_classes.len());
-    
+
     if !excluded_classes.is_empty() {
         println!("Excluded {} classes:", excluded_classes.len());
         for class in &excluded_classes {
@@ -1127,25 +1199,23 @@ fn check_classes(
 
         println!("\nTotal similar class pairs found: {}", similar_pairs.len());
     }
-    
+
     // Suggest possible interface implementations (only when --suggest is enabled)
     if suggest && !excluded_classes.is_empty() {
         println!("\n{}", "=".repeat(60));
         println!("💡 Refactoring suggestions:");
-        
+
         // Check if excluded classes could implement a common interface
-        let implements_classes: Vec<_> = excluded_classes
-            .iter()
-            .filter(|c| !c.implements.is_empty())
-            .collect();
-            
+        let implements_classes: Vec<_> =
+            excluded_classes.iter().filter(|c| !c.implements.is_empty()).collect();
+
         if !implements_classes.is_empty() {
             println!("\nClasses implementing interfaces that could be unified:");
             for class in &implements_classes {
                 println!("  - {} implements {}", class.name, class.implements.join(", "));
             }
         }
-        
+
         // Check if excluded classes with same base could be refactored
         let mut extends_map = std::collections::HashMap::new();
         for class in &excluded_classes {
@@ -1153,7 +1223,7 @@ fn check_classes(
                 extends_map.entry(base.clone()).or_insert(Vec::new()).push(class.name.clone());
             }
         }
-        
+
         if !extends_map.is_empty() {
             println!("\nClasses extending same base class:");
             for (base, classes) in extends_map {
@@ -1162,10 +1232,13 @@ fn check_classes(
                 }
             }
         }
-        
+
         // Suggest looking for similar classes if found
         if !similar_pairs.is_empty() {
-            println!("\n⚠️  Found {} similar class pairs that might benefit from:", similar_pairs.len());
+            println!(
+                "\n⚠️  Found {} similar class pairs that might benefit from:",
+                similar_pairs.len()
+            );
             println!("  - Extracting a common interface");
             println!("  - Creating a shared base class");
             println!("  - Using composition instead of duplication");

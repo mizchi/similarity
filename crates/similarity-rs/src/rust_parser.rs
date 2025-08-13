@@ -204,7 +204,7 @@ impl RustParser {
                 body_start_line = (node.start_position().row + 1) as u32;
                 body_end_line = (node.end_position().row + 1) as u32;
             }
-            
+
             Some(GenericFunctionDef {
                 name,
                 start_line: (node.start_position().row + 1) as u32,
@@ -417,7 +417,7 @@ impl LanguageParser for RustParser {
     ) -> Result<Rc<TreeNode>, Box<dyn Error + Send + Sync>> {
         // Reset node ID counter for each parse
         self.node_id_counter = 0;
-        
+
         // If the source looks like a function body (starts with whitespace or directly with code),
         // wrap it in a minimal function context for parsing
         let wrapped_source = if source.trim_start() != source || !source.starts_with("fn ") {
@@ -454,7 +454,8 @@ impl LanguageParser for RustParser {
                         // Create a synthetic root node containing just the body content
                         let root_id = self.node_id_counter;
                         self.node_id_counter += 1;
-                        let mut root = TreeNode::new("block_content".to_string(), String::new(), root_id);
+                        let mut root =
+                            TreeNode::new("block_content".to_string(), String::new(), root_id);
                         for child in block_children {
                             root.add_child(child);
                         }

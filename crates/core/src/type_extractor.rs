@@ -250,7 +250,7 @@ impl TypeExtractor {
             .as_ref()
             .map(|rt| self.extract_type_string(&rt.type_annotation))
             .unwrap_or_else(|| "void".to_string());
-        
+
         let type_annotation = format!("({}) => {}", params, return_type);
 
         Some(PropertyDefinition {
@@ -321,18 +321,18 @@ impl TypeExtractor {
                     }
                     _ => "_",
                 };
-                
+
                 let param_type = param
                     .pattern
                     .type_annotation
                     .as_ref()
                     .map(|ta| self.extract_type_string(&ta.type_annotation))
                     .unwrap_or_else(|| "any".to_string());
-                
+
                 format!("{}: {}", param_name, param_type)
             })
             .collect();
-        
+
         param_strings.join(", ")
     }
 

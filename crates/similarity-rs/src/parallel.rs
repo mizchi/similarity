@@ -176,7 +176,7 @@ fn extract_function_body(lines: &[&str], func: &GenericFunctionDef) -> String {
     } else {
         (func.start_line.saturating_sub(1)) as usize
     };
-    
+
     let end_idx = if func.body_end_line > 0 {
         std::cmp::min(func.body_end_line as usize, lines.len())
     } else {

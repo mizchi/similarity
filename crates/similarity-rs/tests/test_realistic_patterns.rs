@@ -1,6 +1,9 @@
 #![allow(clippy::uninlined_format_args)]
 
-use similarity_core::{language_parser::LanguageParser, tsed::{calculate_tsed, TSEDOptions}};
+use similarity_core::{
+    language_parser::LanguageParser,
+    tsed::{calculate_tsed, TSEDOptions},
+};
 use similarity_rs::rust_parser::RustParser;
 
 // ASTベースで検出可能なパターンに絞ったテストケース
@@ -30,7 +33,7 @@ fn test_exact_copy() {
 
     let mut options = TSEDOptions::default();
     options.apted_options.compare_values = true;
-    
+
     let similarity = calculate_tsed(&tree1, &tree2, &options);
     println!("Pattern 1 - 完全コピー: {:.2}%", similarity * 100.0);
     assert!(similarity > 0.99, "完全に同じコードは99%以上の類似度を持つべき, got {}", similarity);
@@ -62,13 +65,16 @@ fn test_renamed_copy() {
     let mut options = TSEDOptions::default();
     options.apted_options.compare_values = true;
     options.apted_options.rename_cost = 0.1; // 変数名の違いには寛容
-    
+
     let similarity = calculate_tsed(&tree1, &tree2, &options);
     println!("Pattern 2 - 変数名置換: {:.2}%", similarity * 100.0);
     // compare_values=true でrename_cost=0.1のため、変数名の違いによる影響は小さい
     // 構造が同じで変数名のみ異なる場合、90%以上の類似度になる
-    assert!(similarity > 0.9, 
-            "変数名を置換したコピーは90%以上の類似度を持つべき, got {}", similarity);
+    assert!(
+        similarity > 0.9,
+        "変数名を置換したコピーは90%以上の類似度を持つべき, got {}",
+        similarity
+    );
 }
 
 // Pattern 3: 明らかに異なる処理（検出すべきでない）
@@ -92,7 +98,7 @@ fn test_different_logic() {
 
     let mut options = TSEDOptions::default();
     options.apted_options.compare_values = true;
-    
+
     let similarity = calculate_tsed(&tree1, &tree2, &options);
     println!("Pattern 3 - 異なる処理: {:.2}%", similarity * 100.0);
     assert!(similarity < 0.3, "明らかに異なる処理は30%未満の類似度であるべき, got {}", similarity);
@@ -127,7 +133,7 @@ fn test_similar_control_flow() {
 
     let mut options = TSEDOptions::default();
     options.apted_options.compare_values = true;
-    
+
     let similarity = calculate_tsed(&tree1, &tree2, &options);
     println!("Pattern 4 - 同じ制御フロー: {:.2}%", similarity * 100.0);
     // 構造は同じだが、関数名が異なるため、中程度の類似度が現実的
@@ -158,13 +164,17 @@ fn test_reordered_lines() {
 
     let mut options = TSEDOptions::default();
     options.apted_options.compare_values = true;
-    
+
     let similarity = calculate_tsed(&tree1, &tree2, &options);
     println!("Pattern 5 - 行順序入れ替え: {:.2}%", similarity * 100.0);
     // 変数定義の順序が異なるが、最終的な計算式は同じ
     // ノードIDが正しく設定されたことで、より正確な編集距離が計算される
     // 変数定義の順序が異なるが、計算式は同じなので中程度の類似度
-    assert!(similarity > 0.7 && similarity < 0.85, "行順序の入れ替えは70-85%の類似度であるべき, got {}", similarity);
+    assert!(
+        similarity > 0.7 && similarity < 0.85,
+        "行順序の入れ替えは70-85%の類似度であるべき, got {}",
+        similarity
+    );
 }
 
 // Pattern 6: match式の同じパターン（構造的に類似）
@@ -190,7 +200,7 @@ fn test_match_patterns() {
 
     let mut options = TSEDOptions::default();
     options.apted_options.compare_values = true;
-    
+
     let similarity = calculate_tsed(&tree1, &tree2, &options);
     println!("Pattern 6 - match式: {:.2}%", similarity * 100.0);
     // 構造はほぼ同じ、変数名のみ異なる
@@ -228,10 +238,14 @@ fn test_size_difference() {
     let mut options = TSEDOptions::default();
     options.apted_options.compare_values = true;
     options.size_penalty = true; // サイズペナルティを有効化
-    
+
     let similarity = calculate_tsed(&tree1, &tree2, &options);
     println!("Pattern 7 - サイズ差: {:.2}%", similarity * 100.0);
-    assert!(similarity < 0.2, "大きさが大きく異なるコードは20%未満の類似度であるべき, got {}", similarity);
+    assert!(
+        similarity < 0.2,
+        "大きさが大きく異なるコードは20%未満の類似度であるべき, got {}",
+        similarity
+    );
 }
 
 // Pattern 8: 同じ構造体フィールドアクセスパターン
@@ -255,9 +269,13 @@ fn test_struct_field_access() {
 
     let mut options = TSEDOptions::default();
     options.apted_options.compare_values = true;
-    
+
     let similarity = calculate_tsed(&tree1, &tree2, &options);
     println!("Pattern 8 - 構造体アクセス: {:.2}%", similarity * 100.0);
     // フィールド名は同じ、値の変数名のみ異なる
-    assert!(similarity > 0.6, "同じ構造体アクセスパターンは60%以上の類似度を持つべき, got {}", similarity);
+    assert!(
+        similarity > 0.6,
+        "同じ構造体アクセスパターンは60%以上の類似度を持つべき, got {}",
+        similarity
+    );
 }

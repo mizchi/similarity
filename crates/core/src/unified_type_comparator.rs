@@ -1,5 +1,7 @@
-use crate::type_comparator::{TypeComparisonOptions, TypeComparisonResult, compare_types, compare_type_literal_with_type};
-use crate::type_extractor::{TypeDefinition, TypeLiteralDefinition, TypeKind};
+use crate::type_comparator::{
+    compare_type_literal_with_type, compare_types, TypeComparisonOptions, TypeComparisonResult,
+};
+use crate::type_extractor::{TypeDefinition, TypeKind, TypeLiteralDefinition};
 
 #[derive(Debug, Clone)]
 pub enum UnifiedType {
@@ -42,7 +44,8 @@ impl UnifiedType {
                 TypeKind::Interface => "interface",
                 TypeKind::TypeAlias => "type",
                 TypeKind::TypeLiteral => "type-literal",
-            }.to_string(),
+            }
+            .to_string(),
             UnifiedType::TypeLiteral(_) => "type-literal".to_string(),
         }
     }
@@ -65,8 +68,8 @@ fn compare_unified_types(
         (UnifiedType::TypeDef(def1), UnifiedType::TypeDef(def2)) => {
             compare_types(def1, def2, options)
         }
-        (UnifiedType::TypeDef(def), UnifiedType::TypeLiteral(lit)) |
-        (UnifiedType::TypeLiteral(lit), UnifiedType::TypeDef(def)) => {
+        (UnifiedType::TypeDef(def), UnifiedType::TypeLiteral(lit))
+        | (UnifiedType::TypeLiteral(lit), UnifiedType::TypeDef(def)) => {
             compare_type_literal_with_type(lit, def, options)
         }
         (UnifiedType::TypeLiteral(lit1), UnifiedType::TypeLiteral(lit2)) => {
@@ -103,17 +106,17 @@ fn should_compare(type1: &UnifiedType, type2: &UnifiedType) -> bool {
     if type1.file_path() == type2.file_path() {
         let range1 = type1.start_line()..=type1.end_line();
         let range2 = type2.start_line()..=type2.end_line();
-        
+
         // Check if ranges overlap
         if range1.start() <= range2.end() && range2.start() <= range1.end() {
             return false;
         }
-        
+
         // For type literals with same name in same file, skip
-        if matches!((type1, type2), (UnifiedType::TypeLiteral(_), UnifiedType::TypeLiteral(_))) {
-            if type1.name() == type2.name() {
-                return false;
-            }
+        if matches!((type1, type2), (UnifiedType::TypeLiteral(_), UnifiedType::TypeLiteral(_)))
+            && type1.name() == type2.name()
+        {
+            return false;
         }
     }
 
@@ -129,29 +132,29 @@ pub fn find_similar_unified_types(
 ) -> Vec<UnifiedTypeComparisonPair> {
     // Combine all types into unified list
     let mut all_types = Vec::new();
-    
+
     for def in type_definitions {
         all_types.push(UnifiedType::TypeDef(def.clone()));
     }
-    
+
     for lit in type_literals {
         all_types.push(UnifiedType::TypeLiteral(lit.clone()));
     }
-    
+
     let mut similar_pairs = Vec::new();
-    
+
     // Compare all pairs
     for i in 0..all_types.len() {
         for j in (i + 1)..all_types.len() {
             let type1 = &all_types[i];
             let type2 = &all_types[j];
-            
+
             if !should_compare(type1, type2) {
                 continue;
             }
-            
+
             let result = compare_unified_types(type1, type2, options);
-            
+
             if result.similarity >= threshold {
                 similar_pairs.push(UnifiedTypeComparisonPair {
                     type1: type1.clone(),
@@ -161,11 +164,9 @@ pub fn find_similar_unified_types(
             }
         }
     }
-    
+
     // Sort by similarity (descending)
-    similar_pairs.sort_by(|a, b| {
-        b.result.similarity.partial_cmp(&a.result.similarity).unwrap()
-    });
-    
+    similar_pairs.sort_by(|a, b| b.result.similarity.partial_cmp(&a.result.similarity).unwrap());
+
     similar_pairs
 }

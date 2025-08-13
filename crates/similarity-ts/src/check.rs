@@ -17,10 +17,30 @@ fn create_exclude_matcher(exclude_patterns: &[String]) -> Option<globset::GlobSe
 
     let mut builder = globset::GlobSetBuilder::new();
     for pattern in exclude_patterns {
+        // Add the pattern as-is
         if let Ok(glob) = globset::Glob::new(pattern) {
             builder.add(glob);
-        } else {
-            eprintln!("Warning: Invalid glob pattern: {}", pattern);
+        }
+
+        // If the pattern doesn't start with **, also add a **/ prefix version
+        // This allows "tests/fixtures" to match "any/path/tests/fixtures"
+        if !pattern.starts_with("**") {
+            let prefixed = format!("**/{}", pattern);
+            if let Ok(glob) = globset::Glob::new(&prefixed) {
+                builder.add(glob);
+            }
+
+            // Also add a suffix version for matching files within the directory
+            let suffixed = format!("{}/**", pattern.trim_end_matches('/'));
+            if let Ok(glob) = globset::Glob::new(&suffixed) {
+                builder.add(glob);
+            }
+
+            // And both prefix and suffix
+            let both = format!("**/{}", suffixed);
+            if let Ok(glob) = globset::Glob::new(&both) {
+                builder.add(glob);
+            }
         }
     }
 
@@ -276,7 +296,12 @@ pub fn check_paths(
             }
         } else if path.is_dir() {
             // If it's a directory, walk it respecting .gitignore
-            let walker = WalkBuilder::new(path).follow_links(false).build();
+            let walker = WalkBuilder::new(path)
+                .follow_links(false)
+                .git_ignore(true) // Respect .gitignore files
+                .git_global(true) // Respect global gitignore
+                .git_exclude(true) // Respect .git/info/exclude
+                .build();
 
             for entry in walker {
                 let entry = entry?;
@@ -289,8 +314,18 @@ pub fn check_paths(
 
                 // Check if path should be excluded
                 if let Some(ref matcher) = exclude_matcher {
+                    // Check both the full path and relative path from the search root
                     if matcher.is_match(entry_path) {
                         continue;
+                    }
+
+                    // Also check relative path from current directory
+                    if let Ok(current_dir) = std::env::current_dir() {
+                        if let Ok(relative) = entry_path.strip_prefix(&current_dir) {
+                            if matcher.is_match(relative) {
+                                continue;
+                            }
+                        }
                     }
                 }
 
