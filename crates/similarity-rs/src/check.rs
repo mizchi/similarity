@@ -82,7 +82,8 @@ pub fn check_paths(
     // Cross-file support can be added later
 
     // Display results
-    let duplicate_count = display_all_results(all_results, print, filter_function, filter_function_body);
+    let duplicate_count =
+        display_all_results(all_results, print, filter_function, filter_function_body);
 
     Ok(duplicate_count)
 }

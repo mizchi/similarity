@@ -8,6 +8,7 @@ use tree_sitter::{Node, Parser};
 
 pub struct RustParser {
     parser: Parser,
+    node_id_counter: usize,
 }
 
 impl RustParser {
@@ -17,7 +18,7 @@ impl RustParser {
             Box::new(std::io::Error::other(format!("Failed to set Rust language: {e:?}")))
                 as Box<dyn Error + Send + Sync>
         })?;
-        Ok(RustParser { parser })
+        Ok(RustParser { parser, node_id_counter: 0 })
     }
 
     fn extract_functions_from_node<'a>(
@@ -197,6 +198,13 @@ impl RustParser {
         }
 
         if !name.is_empty() {
+            // For single-line functions without a block, use the whole function line
+            if body_start_line == 0 {
+                // For single line functions, the body is the same as the function itself
+                body_start_line = (node.start_position().row + 1) as u32;
+                body_end_line = (node.end_position().row + 1) as u32;
+            }
+            
             Some(GenericFunctionDef {
                 name,
                 start_line: (node.start_position().row + 1) as u32,
@@ -216,7 +224,7 @@ impl RustParser {
     }
 
     #[allow(clippy::only_used_in_recursion)]
-    fn convert_node_to_tree(&self, node: Node, source: &str) -> Rc<TreeNode> {
+    fn convert_node_to_tree(&mut self, node: Node, source: &str) -> Rc<TreeNode> {
         let label = node.kind().to_string();
 
         let value = match node.kind() {
@@ -239,7 +247,9 @@ impl RustParser {
             _ => String::new(),
         };
 
-        let mut tree_node = TreeNode::new(label, value, 0);
+        let node_id = self.node_id_counter;
+        self.node_id_counter += 1;
+        let mut tree_node = TreeNode::new(label, value, node_id);
 
         for child in node.children(&mut node.walk()) {
             if !child.is_extra() {
@@ -405,6 +415,9 @@ impl LanguageParser for RustParser {
         source: &str,
         filename: &str,
     ) -> Result<Rc<TreeNode>, Box<dyn Error + Send + Sync>> {
+        // Reset node ID counter for each parse
+        self.node_id_counter = 0;
+        
         // If the source looks like a function body (starts with whitespace or directly with code),
         // wrap it in a minimal function context for parsing
         let wrapped_source = if source.trim_start() != source || !source.starts_with("fn ") {
@@ -439,7 +452,9 @@ impl LanguageParser for RustParser {
                         }
 
                         // Create a synthetic root node containing just the body content
-                        let mut root = TreeNode::new("block_content".to_string(), String::new(), 0);
+                        let root_id = self.node_id_counter;
+                        self.node_id_counter += 1;
+                        let mut root = TreeNode::new("block_content".to_string(), String::new(), root_id);
                         for child in block_children {
                             root.add_child(child);
                         }

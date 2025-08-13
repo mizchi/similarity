@@ -167,11 +167,21 @@ pub fn check_within_file_duplicates_parallel(
         .collect()
 }
 
-/// Extract complete function from lines (including signature)
+/// Extract function body only (excluding signature)
 fn extract_function_body(lines: &[&str], func: &GenericFunctionDef) -> String {
-    // Use the complete function, not just the body
-    let start_idx = (func.start_line.saturating_sub(1)) as usize;
-    let end_idx = std::cmp::min(func.end_line as usize, lines.len());
+    // Extract only the body (between body_start_line and body_end_line)
+    // If body_start_line/body_end_line are not set, fall back to using the whole function
+    let start_idx = if func.body_start_line > 0 {
+        (func.body_start_line.saturating_sub(1)) as usize
+    } else {
+        (func.start_line.saturating_sub(1)) as usize
+    };
+    
+    let end_idx = if func.body_end_line > 0 {
+        std::cmp::min(func.body_end_line as usize, lines.len())
+    } else {
+        std::cmp::min(func.end_line as usize, lines.len())
+    };
 
     if start_idx >= lines.len() {
         return String::new();
