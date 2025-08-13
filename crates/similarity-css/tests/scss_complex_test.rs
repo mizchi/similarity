@@ -1,5 +1,7 @@
-use similarity_css::{CssParser, calculate_rule_similarity, DuplicateAnalyzer, convert_to_css_rule};
 use similarity_core::language_parser::LanguageParser;
+use similarity_css::{
+    calculate_rule_similarity, convert_to_css_rule, CssParser, DuplicateAnalyzer,
+};
 
 #[test]
 fn test_scss_variables_and_calculations() {
@@ -45,21 +47,19 @@ $border-width: 2px;
 
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
+
     println!("Found {} rules", rules.len());
-    
+
     // Convert to CssRule
-    let css_rules: Vec<_> = rules.iter()
-        .map(|func| convert_to_css_rule(func, scss_content))
-        .collect();
-    
+    let css_rules: Vec<_> =
+        rules.iter().map(|func| convert_to_css_rule(func, scss_content)).collect();
+
     // Find button rules
-    let button_rules: Vec<_> = css_rules.iter()
-        .filter(|r| r.selector == ".button" || r.selector == ".btn")
-        .collect();
-    
+    let button_rules: Vec<_> =
+        css_rules.iter().filter(|r| r.selector == ".button" || r.selector == ".btn").collect();
+
     assert_eq!(button_rules.len(), 2, "Should find both .button and .btn");
-    
+
     // They should be similar but not identical (variables vs hardcoded)
     if button_rules.len() == 2 {
         let similarity = calculate_rule_similarity(button_rules[0], button_rules[1]);
@@ -68,8 +68,7 @@ $border-width: 2px;
         println!("Button 2: {:?}", button_rules[1].declarations);
         // Note: SCSS variables are not expanded in our simple parser,
         // so similarity will be lower than expected
-        assert!(similarity > 0.1, 
-            "Rules should have some similarity");
+        assert!(similarity > 0.1, "Rules should have some similarity");
     }
 }
 
@@ -130,28 +129,27 @@ fn test_nested_media_queries() {
 
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
-    let css_rules: Vec<_> = rules.iter()
-        .map(|func| convert_to_css_rule(func, scss_content))
-        .collect();
-    
+
+    let css_rules: Vec<_> =
+        rules.iter().map(|func| convert_to_css_rule(func, scss_content)).collect();
+
     // Check for base grid rules
-    let base_grid_rules: Vec<_> = css_rules.iter()
-        .filter(|r| r.selector == ".responsive-grid")
-        .collect();
-    
+    let base_grid_rules: Vec<_> =
+        css_rules.iter().filter(|r| r.selector == ".responsive-grid").collect();
+
     assert_eq!(base_grid_rules.len(), 2, "Should find 2 base .responsive-grid rules");
-    
+
     // Check for nested item rules
-    let grid_item_rules: Vec<_> = css_rules.iter()
-        .filter(|r| r.selector.contains("grid-item"))
-        .collect();
-    
+    let grid_item_rules: Vec<_> =
+        css_rules.iter().filter(|r| r.selector.contains("grid-item")).collect();
+
     assert!(!grid_item_rules.is_empty(), "Should find grid-item rules");
-    
+
     // Verify nested selectors
-    assert!(css_rules.iter().any(|r| r.selector == ".responsive-grid .grid-item"),
-        "Should have nested .grid-item selector");
+    assert!(
+        css_rules.iter().any(|r| r.selector == ".responsive-grid .grid-item"),
+        "Should have nested .grid-item selector"
+    );
 }
 
 #[test]
@@ -237,37 +235,49 @@ fn test_complex_selector_combinations() {
 
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
-    let css_rules: Vec<_> = rules.iter()
-        .map(|func| convert_to_css_rule(func, scss_content))
-        .collect();
-    
+
+    let css_rules: Vec<_> =
+        rules.iter().map(|func| convert_to_css_rule(func, scss_content)).collect();
+
     println!("Complex selectors found:");
     for rule in &css_rules {
-        if rule.selector.contains("::") || rule.selector.contains(":focus") || rule.selector.contains(".error") {
+        if rule.selector.contains("::")
+            || rule.selector.contains(":focus")
+            || rule.selector.contains(".error")
+        {
             println!("  - {}", rule.selector);
         }
     }
-    
+
     // Verify complex selectors were generated correctly
-    assert!(css_rules.iter().any(|r| r.selector == ".form-group"),
-        "Should have .form-group selector");
-    
-    assert!(css_rules.iter().any(|r| r.selector == ".form-group label.required::after"),
-        "Should have complex pseudo-element selector");
-    
-    assert!(css_rules.iter().any(|r| r.selector == ".form-group input:focus" || 
-                                         r.selector == ".form-group textarea:focus" ||
-                                         r.selector == ".form-group select:focus"),
-        "Should have :focus pseudo-class selectors");
-    
-    assert!(css_rules.iter().any(|r| r.selector == ".form-group input.error:focus" ||
-                                         r.selector == ".form-group textarea.error:focus" ||
-                                         r.selector == ".form-group select.error:focus"),
-        "Should have combined class and pseudo-class selectors");
-    
-    assert!(css_rules.iter().any(|r| r.selector == ".form-actions button.primary"),
-        "Should have nested button selectors");
+    assert!(
+        css_rules.iter().any(|r| r.selector == ".form-group"),
+        "Should have .form-group selector"
+    );
+
+    assert!(
+        css_rules.iter().any(|r| r.selector == ".form-group label.required::after"),
+        "Should have complex pseudo-element selector"
+    );
+
+    assert!(
+        css_rules.iter().any(|r| r.selector == ".form-group input:focus"
+            || r.selector == ".form-group textarea:focus"
+            || r.selector == ".form-group select:focus"),
+        "Should have :focus pseudo-class selectors"
+    );
+
+    assert!(
+        css_rules.iter().any(|r| r.selector == ".form-group input.error:focus"
+            || r.selector == ".form-group textarea.error:focus"
+            || r.selector == ".form-group select.error:focus"),
+        "Should have combined class and pseudo-class selectors"
+    );
+
+    assert!(
+        css_rules.iter().any(|r| r.selector == ".form-actions button.primary"),
+        "Should have nested button selectors"
+    );
 }
 
 #[test]
@@ -348,49 +358,58 @@ fn test_mixin_like_patterns() {
 
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
-    let css_rules: Vec<_> = rules.iter()
-        .map(|func| convert_to_css_rule(func, scss_content))
-        .collect();
-    
+
+    let css_rules: Vec<_> =
+        rules.iter().map(|func| convert_to_css_rule(func, scss_content)).collect();
+
     // Debug output
     println!("Total CSS rules found: {}", css_rules.len());
     for rule in &css_rules {
         if rule.selector.contains("card") || rule.selector.contains("article") {
-            println!("  - {} (lines {}-{}, {} declarations)", 
-                rule.selector, rule.start_line, rule.end_line, rule.declarations.len());
+            println!(
+                "  - {} (lines {}-{}, {} declarations)",
+                rule.selector,
+                rule.start_line,
+                rule.end_line,
+                rule.declarations.len()
+            );
         }
     }
-    
+
     // Analyze duplicates - note: @extend is not processed by our simple parser
     let analyzer = DuplicateAnalyzer::new(css_rules.clone(), 0.5);
     let result = analyzer.analyze();
-    
+
     println!("Style duplicates found: {}", result.style_duplicates.len());
     for dup in &result.style_duplicates {
-        println!("  - {} similar to {} (similarity: {:.2})", 
-            dup.rule1.selector, dup.rule2.selector, dup.similarity);
+        println!(
+            "  - {} similar to {} (similarity: {:.2})",
+            dup.rule1.selector, dup.rule2.selector, dup.similarity
+        );
     }
-    
+
     // Check for exact duplicates
     println!("Exact duplicates found: {}", result.exact_duplicates.len());
     for dup in &result.exact_duplicates {
-        println!("  - {} identical to {}", 
-            dup.rule1.selector, dup.rule2.selector);
+        println!("  - {} identical to {}", dup.rule1.selector, dup.rule2.selector);
     }
-    
+
     // .card and .article-card should have similar base styles
-    assert!(!result.style_duplicates.is_empty(), 
-        "Should find style duplicates between card patterns");
-    
-    // Check for similar header styles
-    let header_similar = result.style_duplicates.iter().any(|d| 
-        (d.rule1.selector.contains("header") && d.rule2.selector.contains("header")) ||
-        (d.rule1.selector.contains("Header") && d.rule2.selector.contains("Header"))
+    assert!(
+        !result.style_duplicates.is_empty(),
+        "Should find style duplicates between card patterns"
     );
-    
-    assert!(header_similar || !result.style_duplicates.is_empty(), 
-        "Should detect similar header styles across card types");
+
+    // Check for similar header styles
+    let header_similar = result.style_duplicates.iter().any(|d| {
+        (d.rule1.selector.contains("header") && d.rule2.selector.contains("header"))
+            || (d.rule1.selector.contains("Header") && d.rule2.selector.contains("Header"))
+    });
+
+    assert!(
+        header_similar || !result.style_duplicates.is_empty(),
+        "Should detect similar header styles across card types"
+    );
 }
 
 #[test]
@@ -443,22 +462,22 @@ fn test_scss_each_and_for_patterns() {
 
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
+
     println!("Utility classes found: {}", rules.len());
-    
+
     // Group by pattern
     let margin_rules = rules.iter().filter(|r| r.name.starts_with(".m-")).count();
     let padding_rules = rules.iter().filter(|r| r.name.starts_with(".p-")).count();
     let text_rules = rules.iter().filter(|r| r.name.starts_with(".text-")).count();
     let bg_rules = rules.iter().filter(|r| r.name.starts_with(".bg-")).count();
     let col_rules = rules.iter().filter(|r| r.name.starts_with(".col-")).count();
-    
+
     println!("Margin utilities: {margin_rules}");
     println!("Padding utilities: {padding_rules}");
     println!("Text color utilities: {text_rules}");
     println!("Background utilities: {bg_rules}");
     println!("Column utilities: {col_rules}");
-    
+
     assert_eq!(margin_rules, 6, "Should have 6 margin utilities");
     assert_eq!(padding_rules, 6, "Should have 6 padding utilities");
     assert_eq!(text_rules, 6, "Should have 6 text color utilities");
@@ -541,42 +560,50 @@ fn test_attribute_selectors_and_combinators() {
 
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
+
     println!("Total rules found: {}", rules.len());
     for rule in &rules {
         println!("  - {} (lines {}-{})", rule.name, rule.body_start_line, rule.body_end_line);
     }
-    
-    let css_rules: Vec<_> = rules.iter()
-        .map(|func| convert_to_css_rule(func, scss_content))
-        .collect();
-    
+
+    let css_rules: Vec<_> =
+        rules.iter().map(|func| convert_to_css_rule(func, scss_content)).collect();
+
     // Check attribute selectors
-    let attr_selectors: Vec<_> = css_rules.iter()
+    let attr_selectors: Vec<_> = css_rules
+        .iter()
         .filter(|r| r.selector.contains("[") && r.selector.contains("]"))
         .map(|r| &r.selector)
         .collect();
-    
+
     println!("Attribute selectors found:");
     for sel in &attr_selectors {
         println!("  - {sel}");
     }
-    
+
     assert!(!attr_selectors.is_empty(), "Should find attribute selectors");
-    
+
     // Check for specific patterns
-    assert!(css_rules.iter().any(|r| r.selector.contains("[type=\"text\"]")),
-        "Should have type='text' attribute selector");
-    
-    assert!(css_rules.iter().any(|r| r.selector.contains("[disabled]")),
-        "Should have disabled attribute selector");
-    
+    assert!(
+        css_rules.iter().any(|r| r.selector.contains("[type=\"text\"]")),
+        "Should have type='text' attribute selector"
+    );
+
+    assert!(
+        css_rules.iter().any(|r| r.selector.contains("[disabled]")),
+        "Should have disabled attribute selector"
+    );
+
     // Check combinators
-    assert!(css_rules.iter().any(|r| r.selector.contains("+")),
-        "Should have adjacent sibling combinator");
-    
-    assert!(css_rules.iter().any(|r| r.selector.contains("~")),
-        "Should have general sibling combinator");
+    assert!(
+        css_rules.iter().any(|r| r.selector.contains("+")),
+        "Should have adjacent sibling combinator"
+    );
+
+    assert!(
+        css_rules.iter().any(|r| r.selector.contains("~")),
+        "Should have general sibling combinator"
+    );
 }
 
 #[test]
@@ -634,37 +661,40 @@ fn test_css_custom_properties_and_calculations() {
 
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
-    let css_rules: Vec<_> = rules.iter()
-        .map(|func| convert_to_css_rule(func, scss_content))
-        .collect();
-    
+
+    let css_rules: Vec<_> =
+        rules.iter().map(|func| convert_to_css_rule(func, scss_content)).collect();
+
     // Check CSS custom properties
-    let custom_prop_rules: Vec<_> = css_rules.iter()
+    let custom_prop_rules: Vec<_> = css_rules
+        .iter()
         .filter(|r| r.declarations.iter().any(|(k, _)| k.starts_with("--")))
         .collect();
-    
+
     assert!(!custom_prop_rules.is_empty(), "Should find CSS custom property declarations");
-    
+
     // Check var() usage
-    let var_usage_rules: Vec<_> = css_rules.iter()
+    let var_usage_rules: Vec<_> = css_rules
+        .iter()
         .filter(|r| r.declarations.iter().any(|(_, v)| v.contains("var(")))
         .collect();
-    
+
     println!("Rules using CSS variables: {}", var_usage_rules.len());
     assert!(!var_usage_rules.is_empty(), "Should find rules using var()");
-    
+
     // Check calc() usage
-    let calc_usage_rules: Vec<_> = css_rules.iter()
+    let calc_usage_rules: Vec<_> = css_rules
+        .iter()
         .filter(|r| r.declarations.iter().any(|(_, v)| v.contains("calc(")))
         .collect();
-    
+
     assert!(!calc_usage_rules.is_empty(), "Should find rules using calc()");
-    
+
     // Check color-mix usage
-    let color_mix_rules: Vec<_> = css_rules.iter()
+    let color_mix_rules: Vec<_> = css_rules
+        .iter()
         .filter(|r| r.declarations.iter().any(|(_, v)| v.contains("color-mix(")))
         .collect();
-    
+
     assert!(!color_mix_rules.is_empty(), "Should find rules using color-mix()");
 }

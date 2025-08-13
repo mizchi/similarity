@@ -11,19 +11,20 @@ pub struct FlatRule {
 }
 
 /// Flatten nested SCSS rules into flat CSS rules
-pub fn flatten_scss_rules(content: &str) -> Result<Vec<FlatRule>, Box<dyn std::error::Error + Send + Sync>> {
+pub fn flatten_scss_rules(
+    content: &str,
+) -> Result<Vec<FlatRule>, Box<dyn std::error::Error + Send + Sync>> {
     let mut parser = Parser::new();
     let language = tree_sitter_scss::language();
     parser.set_language(&language)?;
-    
-    let tree = parser.parse(content, None)
-        .ok_or("Failed to parse SCSS")?;
-    
+
+    let tree = parser.parse(content, None).ok_or("Failed to parse SCSS")?;
+
     let root_node = tree.root_node();
     let mut flat_rules = Vec::new();
-    
+
     flatten_node(&root_node, content, &[], &mut flat_rules);
-    
+
     Ok(flat_rules)
 }
 
@@ -36,22 +37,29 @@ fn flatten_node(
 ) {
     // Debug: print node kind
     #[cfg(test)]
-    println!("Processing node: {} at {}:{}", node.kind(), node.start_position().row, node.start_position().column);
-    
+    println!(
+        "Processing node: {} at {}:{}",
+        node.kind(),
+        node.start_position().row,
+        node.start_position().column
+    );
+
     match node.kind() {
         "rule_set" | "ruleset" => {
             // Extract selectors from this rule
             let selectors = extract_selectors(node, source);
-            
+
             // Combine with parent selectors
             let combined_selectors = combine_selectors(parent_selectors, &selectors);
-            
+
             // Extract declarations
             let declarations = extract_declarations(node, source);
-            
+
             #[cfg(test)]
-            println!("  Combined selectors: {combined_selectors:?}, declarations: {declarations:?}");
-            
+            println!(
+                "  Combined selectors: {combined_selectors:?}, declarations: {declarations:?}"
+            );
+
             // Add flat rule if there are declarations
             if !declarations.is_empty() {
                 for selector in &combined_selectors {
@@ -66,16 +74,21 @@ fn flatten_node(
                 #[cfg(test)]
                 println!("  No declarations found for selectors: {combined_selectors:?}");
             }
-            
+
             // Process nested rules in the block
             if let Some(block_node) = node.child_by_field_name("block") {
                 #[cfg(test)]
                 println!("  Processing block with {} children", block_node.child_count());
-                
+
                 for nested in block_node.children(&mut block_node.walk()) {
                     #[cfg(test)]
-                    println!("    Block child for nesting: {} at {}:{}", nested.kind(), nested.start_position().row, nested.start_position().column);
-                    
+                    println!(
+                        "    Block child for nesting: {} at {}:{}",
+                        nested.kind(),
+                        nested.start_position().row,
+                        nested.start_position().column
+                    );
+
                     flatten_node(&nested, source, &combined_selectors, flat_rules);
                 }
             } else {
@@ -87,18 +100,19 @@ fn flatten_node(
             // Handle @media, @supports, etc.
             if let Some(prelude_node) = node.child_by_field_name("prelude") {
                 let at_rule_text = get_node_text(&prelude_node, source);
-                let at_rule = format!("@{} {}", 
+                let at_rule = format!(
+                    "@{} {}",
                     node.child(0).map(|n| get_node_text(&n, source)).unwrap_or_default(),
                     at_rule_text
                 );
-                
+
                 // Process block inside at-rule
                 if let Some(block_node) = node.child_by_field_name("block") {
                     for child in block_node.children(&mut block_node.walk()) {
                         // For at-rules, we need to wrap the selectors
                         let mut wrapped_rules = Vec::new();
                         flatten_node(&child, source, parent_selectors, &mut wrapped_rules);
-                        
+
                         // Add at-rule context to each flattened rule
                         for rule in wrapped_rules {
                             flat_rules.push(FlatRule {
@@ -124,18 +138,23 @@ fn flatten_node(
 /// Extract selectors from a rule_set node
 fn extract_selectors(node: &Node, source: &str) -> Vec<String> {
     let mut selectors = Vec::new();
-    
+
     // Debug: print available fields
     #[cfg(test)]
     {
         println!("  Looking for selectors in node: {}", node.kind());
         for i in 0..node.child_count() {
             if let Some(child) = node.child(i) {
-                println!("    Child {}: {} - {}", i, child.kind(), get_node_text(&child, source).trim());
+                println!(
+                    "    Child {}: {} - {}",
+                    i,
+                    child.kind(),
+                    get_node_text(&child, source).trim()
+                );
             }
         }
     }
-    
+
     // Try different field names and direct children
     if let Some(selector_node) = node.child_by_field_name("selectors") {
         // Handle comma-separated selectors
@@ -163,17 +182,17 @@ fn extract_selectors(node: &Node, source: &str) -> Vec<String> {
             }
         }
     }
-    
+
     #[cfg(test)]
     println!("  Extracted selectors: {selectors:?}");
-    
+
     selectors
 }
 
 /// Extract declarations from a rule_set node
 fn extract_declarations(node: &Node, source: &str) -> Vec<(String, String)> {
     let mut declarations = Vec::new();
-    
+
     // Recursive function to find all declarations
     fn find_declarations(node: &Node, source: &str, declarations: &mut Vec<(String, String)>) {
         if node.kind() == "declaration" {
@@ -181,7 +200,7 @@ fn extract_declarations(node: &Node, source: &str) -> Vec<(String, String)> {
             let mut property = String::new();
             let mut value = String::new();
             let mut found_colon = false;
-            
+
             for i in 0..node.child_count() {
                 if let Some(child) = node.child(i) {
                     match child.kind() {
@@ -204,7 +223,7 @@ fn extract_declarations(node: &Node, source: &str) -> Vec<(String, String)> {
                     }
                 }
             }
-            
+
             if !property.is_empty() && !value.is_empty() {
                 declarations.push((property, value));
             }
@@ -220,7 +239,7 @@ fn extract_declarations(node: &Node, source: &str) -> Vec<(String, String)> {
             }
         }
     }
-    
+
     find_declarations(node, source, &mut declarations);
     declarations
 }
@@ -230,13 +249,13 @@ fn combine_selectors(parents: &[String], currents: &[String]) -> Vec<String> {
     if parents.is_empty() {
         return currents.to_vec();
     }
-    
+
     if currents.is_empty() {
         return parents.to_vec();
     }
-    
+
     let mut combined = Vec::new();
-    
+
     for parent in parents {
         for current in currents {
             let combined_selector = if let Some(suffix) = current.strip_prefix('&') {
@@ -252,7 +271,7 @@ fn combine_selectors(parents: &[String], currents: &[String]) -> Vec<String> {
             combined.push(combined_selector);
         }
     }
-    
+
     combined
 }
 
@@ -265,7 +284,7 @@ fn get_node_text<'a>(node: &Node, source: &'a str) -> &'a str {
 #[allow(dead_code)]
 mod tests {
     use super::*;
-    
+
     #[test]
     #[ignore = "Using scss_simple_flattener instead"]
     fn test_simple_nesting() {
@@ -283,9 +302,9 @@ mod tests {
         font-size: 14px;
     }
 }"#;
-        
+
         let rules = flatten_scss_rules(scss).unwrap();
-        
+
         println!("Found {} rules:", rules.len());
         for rule in &rules {
             println!("  - {} ({} declarations)", rule.selector, rule.declarations.len());
@@ -293,13 +312,13 @@ mod tests {
                 println!("    {prop}: {val}");
             }
         }
-        
+
         assert_eq!(rules.len(), 3);
         assert!(rules.iter().any(|r| r.selector == ".card"));
         assert!(rules.iter().any(|r| r.selector == ".card__header"));
         assert!(rules.iter().any(|r| r.selector == ".card__body"));
     }
-    
+
     #[test]
     #[ignore = "Using scss_simple_flattener instead"]
     fn test_deep_nesting() {
@@ -323,16 +342,16 @@ mod tests {
         }
     }
 }"#;
-        
+
         let rules = flatten_scss_rules(scss).unwrap();
-        
+
         assert!(rules.iter().any(|r| r.selector == ".nav"));
         assert!(rules.iter().any(|r| r.selector == ".nav ul"));
         assert!(rules.iter().any(|r| r.selector == ".nav ul li"));
         assert!(rules.iter().any(|r| r.selector == ".nav ul li a"));
         assert!(rules.iter().any(|r| r.selector == ".nav ul li a:hover"));
     }
-    
+
     #[test]
     #[ignore = "Using scss_simple_flattener instead"]
     fn test_multiple_selectors() {
@@ -346,20 +365,20 @@ mod tests {
         font-weight: bold;
     }
 }"#;
-        
+
         let rules = flatten_scss_rules(scss).unwrap();
-        
+
         // Should have rules for both .btn and .button
         assert!(rules.iter().any(|r| r.selector == ".btn"));
         assert!(rules.iter().any(|r| r.selector == ".button"));
-        
+
         // Should have combined selectors
         assert!(rules.iter().any(|r| r.selector == ".btn.primary"));
         assert!(rules.iter().any(|r| r.selector == ".btn.secondary"));
         assert!(rules.iter().any(|r| r.selector == ".button.primary"));
         assert!(rules.iter().any(|r| r.selector == ".button.secondary"));
     }
-    
+
     #[test]
     #[ignore = "Using scss_simple_flattener instead"]
     fn test_bem_nesting() {
@@ -383,16 +402,16 @@ mod tests {
         }
     }
 }"#;
-        
+
         let rules = flatten_scss_rules(scss).unwrap();
-        
+
         assert!(rules.iter().any(|r| r.selector == ".block"));
         assert!(rules.iter().any(|r| r.selector == ".block__element"));
         assert!(rules.iter().any(|r| r.selector == ".block__element--modifier"));
         assert!(rules.iter().any(|r| r.selector == ".block--modifier"));
         assert!(rules.iter().any(|r| r.selector == ".block--modifier .block__element"));
     }
-    
+
     #[test]
     #[ignore = "Using scss_simple_flattener instead"]
     fn test_media_queries() {
@@ -408,10 +427,12 @@ mod tests {
         width: 970px;
     }
 }"#;
-        
+
         let rules = flatten_scss_rules(scss).unwrap();
-        
+
         assert!(rules.iter().any(|r| r.selector == ".container"));
-        assert!(rules.iter().any(|r| r.selector.contains("@media") && r.selector.contains(".container")));
+        assert!(rules
+            .iter()
+            .any(|r| r.selector.contains("@media") && r.selector.contains(".container")));
     }
 }

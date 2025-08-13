@@ -21,6 +21,7 @@ pub mod type_comparator;
 pub mod type_extractor;
 pub mod type_fingerprint;
 pub mod type_normalizer;
+pub mod unified_type_comparator;
 
 // CLI utilities
 pub mod cli_file_utils;
@@ -40,6 +41,9 @@ pub use tree::TreeNode;
 pub use tsed::{calculate_tsed, calculate_tsed_from_code, TSEDOptions};
 
 // Type-related exports
+pub use unified_type_comparator::{
+    find_similar_unified_types, UnifiedType, UnifiedTypeComparisonPair,
+};
 pub use type_comparator::{
     compare_type_literal_with_type, compare_types, find_duplicate_types,
     find_similar_type_literals, find_similar_type_literals_pairs, find_similar_types,

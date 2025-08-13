@@ -16,10 +16,23 @@ pub fn find_function_overlaps(
     options: &OverlapOptions,
 ) -> Result<Vec<PartialOverlap>, anyhow::Error> {
     // Extract functions from both files
-    let source_functions =
-        extract_functions("source.ts", source_code).map_err(|e| anyhow::anyhow!(e))?;
-    let target_functions =
-        extract_functions("target.ts", target_code).map_err(|e| anyhow::anyhow!(e))?;
+    let source_functions = match extract_functions("source.ts", source_code) {
+        Ok(funcs) => funcs,
+        Err(e) if e.contains("Parse errors:") => {
+            // Skip files with parse errors silently
+            return Ok(Vec::new());
+        }
+        Err(e) => return Err(anyhow::anyhow!(e)),
+    };
+
+    let target_functions = match extract_functions("target.ts", target_code) {
+        Ok(funcs) => funcs,
+        Err(e) if e.contains("Parse errors:") => {
+            // Skip files with parse errors silently
+            return Ok(Vec::new());
+        }
+        Err(e) => return Err(anyhow::anyhow!(e)),
+    };
 
     // Parse and index functions
     let mut all_overlaps = Vec::new();

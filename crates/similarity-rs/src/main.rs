@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::Parser;
 
 mod check;
+mod check_types;
 mod parallel;
 mod rust_parser;
 
@@ -81,13 +82,28 @@ struct Cli {
     /// Exit with code 1 if duplicates are found
     #[arg(long)]
     fail_on_duplicates: bool,
+
+    /// Enable type similarity checking for structs and enums (experimental)
+    #[arg(long = "experimental-types")]
+    types: bool,
+
+    /// Disable function similarity checking
+    #[arg(long = "no-functions")]
+    no_functions: bool,
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    let functions_enabled = true; // Rust always has functions enabled
+    let functions_enabled = !cli.no_functions;
+    let types_enabled = cli.types;
     let overlap_enabled = cli.overlap;
+    
+    // Validate that at least one analyzer is enabled
+    if !functions_enabled && !types_enabled && !overlap_enabled {
+        eprintln!("Error: At least one analyzer must be enabled. Use --experimental-types to enable type checking, --experimental-overlap for overlap detection, or remove --no-functions.");
+        return Err(anyhow::anyhow!("No analyzer enabled"));
+    }
 
     println!("Analyzing Rust code similarity...\n");
 
@@ -95,7 +111,7 @@ fn main() -> Result<()> {
     let mut total_duplicates = 0;
 
     // Run functions analysis
-    if !overlap_enabled || functions_enabled {
+    if functions_enabled {
         println!("=== Function Similarity ===");
         let duplicate_count = check::check_paths(
             cli.paths.clone(),
@@ -115,8 +131,25 @@ fn main() -> Result<()> {
         total_duplicates += duplicate_count;
     }
 
+    // Run types analysis if enabled
+    if types_enabled && functions_enabled {
+        println!("\n{separator}\n");
+    }
+    
+    if types_enabled {
+        println!("=== Type Similarity (Structs & Enums) ===");
+        let type_duplicate_count = check_types::check_types(
+            cli.paths.clone(),
+            cli.threshold,
+            cli.extensions.as_ref(),
+            cli.print,
+            &cli.exclude,
+        )?;
+        total_duplicates += type_duplicate_count;
+    }
+
     // Run overlap analysis if enabled
-    if overlap_enabled && functions_enabled {
+    if overlap_enabled && (functions_enabled || types_enabled) {
         println!("\n{separator}\n");
     }
 

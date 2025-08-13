@@ -28,7 +28,10 @@ impl AstFingerprint {
         let ret = Parser::new(&allocator, source, source_type).parse();
 
         if !ret.errors.is_empty() {
-            return Err(format!("Parse errors: {:?}", ret.errors));
+            // Create a more readable error message
+            let error_messages: Vec<String> =
+                ret.errors.iter().map(|e| e.message.to_string()).collect();
+            return Err(format!("Parse errors: {}", error_messages.join(", ")));
         }
 
         let mut fingerprint = Self::new();

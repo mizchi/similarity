@@ -1,5 +1,5 @@
-use similarity_css::{CssParser, DuplicateAnalyzer, convert_to_css_rule};
 use similarity_core::language_parser::LanguageParser;
+use similarity_css::{convert_to_css_rule, CssParser, DuplicateAnalyzer};
 use std::time::Instant;
 
 #[test]
@@ -7,20 +7,23 @@ use std::time::Instant;
 fn test_large_scss_file_performance() {
     // Generate a large SCSS file
     let mut scss_content = String::new();
-    
+
     // Add base styles
-    scss_content.push_str(r#"
+    scss_content.push_str(
+        r#"
 // Base variables
 $primary-color: #3498db;
 $secondary-color: #2ecc71;
 $base-padding: 1rem;
 $base-margin: 1rem;
 
-"#);
-    
+"#,
+    );
+
     // Generate many utility classes
     for i in 0..100 {
-        scss_content.push_str(&format!(r#"
+        scss_content.push_str(&format!(
+            r#"
 .component-{} {{
     padding: $base-padding;
     margin: $base-margin;
@@ -85,38 +88,44 @@ $base-margin: 1rem;
         }}
     }}
 }}
-"#, i, i % 50, 18 + (i % 8), 14 + (i % 4), 24 + (i % 6), 12 + (i % 4)));
+"#,
+            i,
+            i % 50,
+            18 + (i % 8),
+            14 + (i % 4),
+            24 + (i % 6),
+            12 + (i % 4)
+        ));
     }
-    
+
     // Parse and flatten
     let start = Instant::now();
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(&scss_content, "large.scss").unwrap();
     let parse_time = start.elapsed();
-    
+
     println!("Parsing {} bytes took {:?}", scss_content.len(), parse_time);
     println!("Generated {} rules", rules.len());
-    
+
     // Convert to CSS rules
     let start = Instant::now();
-    let css_rules: Vec<_> = rules.iter()
-        .map(|func| convert_to_css_rule(func, &scss_content))
-        .collect();
+    let css_rules: Vec<_> =
+        rules.iter().map(|func| convert_to_css_rule(func, &scss_content)).collect();
     let convert_time = start.elapsed();
-    
+
     println!("Converting to CSS rules took {convert_time:?}");
-    
+
     // Analyze duplicates
     let start = Instant::now();
     let analyzer = DuplicateAnalyzer::new(css_rules, 0.85);
     let result = analyzer.analyze();
     let analyze_time = start.elapsed();
-    
+
     println!("Duplicate analysis took {analyze_time:?}");
     println!("Found {} exact duplicates", result.exact_duplicates.len());
     println!("Found {} style duplicates", result.style_duplicates.len());
     println!("Found {} BEM variations", result.bem_variations.len());
-    
+
     // Performance assertions
     assert!(parse_time.as_millis() < 1000, "Parsing should be fast");
     assert!(analyze_time.as_secs() < 5, "Analysis should complete within 5 seconds");
@@ -264,28 +273,30 @@ $container-max-widths: (
 
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(scss_content, "bootstrap.scss").unwrap();
-    
-    let css_rules: Vec<_> = rules.iter()
-        .map(|func| convert_to_css_rule(func, scss_content))
-        .collect();
-    
+
+    let css_rules: Vec<_> =
+        rules.iter().map(|func| convert_to_css_rule(func, scss_content)).collect();
+
     // Analyze patterns
     let analyzer = DuplicateAnalyzer::new(css_rules.clone(), 0.8);
     let result = analyzer.analyze();
-    
+
     println!("Bootstrap pattern analysis:");
     println!("- Total rules: {}", css_rules.len());
-    println!("- Grid column rules: {}", css_rules.iter().filter(|r| r.selector.contains("col-")).count());
+    println!(
+        "- Grid column rules: {}",
+        css_rules.iter().filter(|r| r.selector.contains("col-")).count()
+    );
     println!("- Button rules: {}", css_rules.iter().filter(|r| r.selector.contains("btn")).count());
     println!("- Media query rules: {}", rules.iter().filter(|r| r.name.contains("@media")).count());
-    
+
     // Get recommendations
     let recommendations = analyzer.get_recommendations(&result);
     println!("\nRecommendations:");
     for rec in recommendations {
         println!("{rec}");
     }
-    
+
     // Should find button pattern duplications
     assert!(!result.style_duplicates.is_empty(), "Should find style duplicates in button patterns");
 }
@@ -414,23 +425,29 @@ $spacing-scale: (
     let start = Instant::now();
     let rules = parser.extract_functions(scss_content, "tailwind.scss").unwrap();
     let parse_time = start.elapsed();
-    
+
     println!("Parsing Tailwind-like utilities took {parse_time:?}");
     println!("Generated {} utility classes", rules.len());
-    
+
     // Count different types
     let margin_count = rules.iter().filter(|r| r.name.starts_with(".m")).count();
     let padding_count = rules.iter().filter(|r| r.name.starts_with(".p")).count();
-    let flex_count = rules.iter().filter(|r| r.name.contains("flex") || r.name.contains("justify") || r.name.contains("items")).count();
+    let flex_count = rules
+        .iter()
+        .filter(|r| {
+            r.name.contains("flex") || r.name.contains("justify") || r.name.contains("items")
+        })
+        .count();
     let text_count = rules.iter().filter(|r| r.name.contains("text")).count();
-    let responsive_count = rules.iter().filter(|r| r.name.contains("sm\\:") || r.name.contains("md\\:")).count();
-    
+    let responsive_count =
+        rules.iter().filter(|r| r.name.contains("sm\\:") || r.name.contains("md\\:")).count();
+
     println!("Margin utilities: {margin_count}");
     println!("Padding utilities: {padding_count}");
     println!("Flexbox utilities: {flex_count}");
     println!("Text utilities: {text_count}");
     println!("Responsive utilities: {responsive_count}");
-    
+
     // Utilities should parse quickly
     assert!(parse_time.as_millis() < 500, "Utility parsing should be fast");
     assert!(rules.len() > 100, "Should generate many utility classes");

@@ -26,7 +26,7 @@ struct Cli {
     #[arg(long = "no-functions")]
     no_functions: bool,
 
-    /// Enable type similarity checking
+    /// Enable type similarity checking (includes type literals by default)
     #[arg(long = "types", default_value = "true")]
     types: bool,
     
@@ -49,6 +49,10 @@ struct Cli {
     /// Include classes with interface implementation (implements) - excluded by default
     #[arg(long)]
     include_implements: bool,
+    
+    /// Show refactoring suggestions for excluded classes
+    #[arg(long)]
+    suggest: bool,
 
     /// File extensions to check
     #[arg(short, long, value_delimiter = ',')]
@@ -78,15 +82,15 @@ struct Cli {
     #[arg(long)]
     filter_function_body: Option<String>,
 
-    /// Include both interfaces and type aliases
-    #[arg(long)]
+    /// Include both interfaces and type aliases (deprecated - both are included by default)
+    #[arg(long, hide = true)]
     include_types: bool,
 
-    /// Only check type aliases (exclude interfaces)
+    /// Only check type aliases (excludes interfaces and type literals)
     #[arg(long)]
     types_only: bool,
 
-    /// Only check interfaces (exclude type aliases)
+    /// Only check interfaces (excludes type aliases and type literals)
     #[arg(long)]
     interfaces_only: bool,
 
@@ -102,9 +106,17 @@ struct Cli {
     #[arg(long, default_value = "0.4")]
     naming_weight: f64,
 
-    /// Include type literals (function return types, parameters, etc.)
+    /// Only check type literals (excludes type aliases and interfaces)
     #[arg(long)]
-    include_type_literals: bool,
+    type_literals_only: bool,
+    
+    /// Enable unified type comparison (default: true - compares across type aliases, interfaces, and type literals)
+    #[arg(long, default_value = "true")]
+    unified_types: bool,
+    
+    /// Disable unified type comparison
+    #[arg(long, conflicts_with = "unified_types")]
+    no_unified_types: bool,
 
     /// Disable fast mode with bloom filter pre-filtering
     #[arg(long = "no-fast")]
@@ -142,6 +154,8 @@ fn main() -> anyhow::Result<()> {
     let types_enabled = (cli.types && !cli.no_types) && !cli.classes_only;
     let classes_enabled = cli.classes || cli.classes_only;
     let overlap_enabled = cli.overlap;
+    let unified_types_enabled = cli.unified_types && !cli.no_unified_types;
+    let include_type_literals = true;  // Always include type literals
 
     // Validate that at least one analyzer is enabled
     if !functions_enabled && !types_enabled && !classes_enabled && !overlap_enabled {
@@ -198,13 +212,14 @@ fn main() -> anyhow::Result<()> {
             cli.threshold,
             cli.extensions.as_ref(),
             cli.print,
-            cli.include_types,
             cli.types_only,
             cli.interfaces_only,
+            cli.type_literals_only,
             cli.allow_cross_kind,
             cli.structural_weight,
             cli.naming_weight,
-            cli.include_type_literals,
+            include_type_literals,
+            unified_types_enabled,
             &cli.exclude,
         )?;
         total_duplicates += type_duplicate_count;
@@ -224,6 +239,7 @@ fn main() -> anyhow::Result<()> {
             cli.print,
             !cli.include_inheritance,
             !cli.include_implements,
+            cli.suggest,
             &cli.exclude,
         )?;
         total_duplicates += class_duplicate_count;
@@ -280,19 +296,20 @@ fn check_types(
     threshold: f64,
     extensions: Option<&Vec<String>>,
     print: bool,
-    _include_types: bool,
     types_only: bool,
     interfaces_only: bool,
+    type_literals_only: bool,
     allow_cross_kind: bool,
     structural_weight: f64,
     naming_weight: f64,
     include_type_literals: bool,
+    unified_types: bool,
     exclude_patterns: &[String],
 ) -> anyhow::Result<usize> {
     use ignore::WalkBuilder;
     use similarity_core::{
         extract_type_literals_from_code, extract_types_from_code, find_similar_type_literals,
-        find_similar_types, TypeComparisonOptions, TypeKind,
+        find_similar_types, find_similar_unified_types, UnifiedType, TypeComparisonOptions, TypeKind,
     };
     use std::collections::HashSet;
     use std::fs;
@@ -378,21 +395,23 @@ fn check_types(
             Ok(content) => {
                 let file_str = file.to_string_lossy();
 
-                // Extract regular types
-                match extract_types_from_code(&content, &file_str) {
-                    Ok(mut types) => {
-                        // Filter types based on command line options
-                        if types_only {
-                            types.retain(|t| t.kind == TypeKind::TypeAlias);
-                        } else if interfaces_only {
-                            types.retain(|t| t.kind == TypeKind::Interface);
+                // Extract regular types unless type_literals_only is set
+                if !type_literals_only {
+                    match extract_types_from_code(&content, &file_str) {
+                        Ok(mut types) => {
+                            // Filter types based on command line options
+                            if types_only {
+                                types.retain(|t| t.kind == TypeKind::TypeAlias);
+                            } else if interfaces_only {
+                                types.retain(|t| t.kind == TypeKind::Interface);
+                            }
+                            all_types.extend(types);
                         }
-                        all_types.extend(types);
-                    }
-                    Err(e) => {
-                        // Skip files with parse errors silently
-                        if !e.contains("Parse errors:") {
-                            eprintln!("Error in {}: {}", file.display(), e);
+                        Err(e) => {
+                            // Skip files with parse errors silently
+                            if !e.contains("Parse errors:") {
+                                eprintln!("Error in {}: {}", file.display(), e);
+                            }
                         }
                     }
                 }
@@ -441,17 +460,64 @@ fn check_types(
         eprintln!("Warning: structural_weight + naming_weight should equal 1.0");
     }
 
-    // Find similar types across all files
-    let similar_pairs = find_similar_types(&all_types, threshold, &options);
-
-    // Find type literals similar to type definitions
-    let type_literal_pairs = if include_type_literals {
-        find_similar_type_literals(&all_type_literals, &all_types, threshold, &options)
+    // Handle unified type comparison if enabled
+    let (similar_pairs, type_literal_pairs, type_literal_to_literal_pairs) = if unified_types {
+        // Use unified comparison that combines all types
+        let unified_pairs = find_similar_unified_types(&all_types, &all_type_literals, threshold, &options);
+        
+        // Convert unified pairs to the existing format for display (for now)
+        let mut regular_pairs = Vec::new();
+        let mut literal_to_def_pairs = Vec::new();
+        let mut literal_to_literal_pairs = Vec::new();
+        
+        for pair in unified_pairs {
+            match (&pair.type1, &pair.type2) {
+                (UnifiedType::TypeDef(def1), UnifiedType::TypeDef(def2)) => {
+                    regular_pairs.push(similarity_core::SimilarTypePair {
+                        type1: def1.clone(),
+                        type2: def2.clone(),
+                        result: pair.result,
+                    });
+                }
+                (UnifiedType::TypeLiteral(lit), UnifiedType::TypeDef(def)) |
+                (UnifiedType::TypeDef(def), UnifiedType::TypeLiteral(lit)) => {
+                    literal_to_def_pairs.push(similarity_core::TypeLiteralComparisonPair {
+                        type_literal: lit.clone(),
+                        type_definition: def.clone(),
+                        result: pair.result,
+                    });
+                }
+                (UnifiedType::TypeLiteral(lit1), UnifiedType::TypeLiteral(lit2)) => {
+                    literal_to_literal_pairs.push((lit1.clone(), lit2.clone(), pair.result));
+                }
+            }
+        }
+        
+        (regular_pairs, literal_to_def_pairs, literal_to_literal_pairs)
     } else {
-        Vec::new()
+        // Use existing separate comparison methods
+        let similar_pairs = if type_literals_only {
+            Vec::new()
+        } else {
+            find_similar_types(&all_types, threshold, &options)
+        };
+
+        let type_literal_pairs = if include_type_literals && !type_literals_only {
+            find_similar_type_literals(&all_type_literals, &all_types, threshold, &options)
+        } else {
+            Vec::new()
+        };
+        
+        let type_literal_to_literal_pairs = if include_type_literals {
+            similarity_core::find_similar_type_literals_pairs(&all_type_literals, threshold, &options)
+        } else {
+            Vec::new()
+        };
+        
+        (similar_pairs, type_literal_pairs, type_literal_to_literal_pairs)
     };
 
-    if similar_pairs.is_empty() && type_literal_pairs.is_empty() {
+    if similar_pairs.is_empty() && type_literal_pairs.is_empty() && type_literal_to_literal_pairs.is_empty() {
         println!("\nNo similar types found!");
     } else {
         if !similar_pairs.is_empty() {
@@ -538,9 +604,48 @@ fn check_types(
 
             println!("\nTotal type literal pairs found: {}", type_literal_pairs.len());
         }
+        
+        if !type_literal_to_literal_pairs.is_empty() {
+            println!("\nSimilar type literals found:");
+            println!("{}", "-".repeat(60));
+            
+            for (literal1, literal2, result) in &type_literal_to_literal_pairs {
+                let path1 = get_relative_path(&literal1.file_path);
+                let path2 = get_relative_path(&literal2.file_path);
+                
+                println!(
+                    "\nSimilarity: {:.2}% (structural: {:.2}%, naming: {:.2}%)",
+                    result.similarity * 100.0,
+                    result.structural_similarity * 100.0,
+                    result.naming_similarity * 100.0
+                );
+                println!(
+                    "  {}:{} | L{} type-literal: {}",
+                    path1,
+                    literal1.start_line,
+                    literal1.start_line,
+                    literal1.name
+                );
+                println!(
+                    "  {}:{} | L{} type-literal: {}",
+                    path2,
+                    literal2.start_line,
+                    literal2.start_line,
+                    literal2.name
+                );
+                
+                if print {
+                    show_type_literal_details(&literal1);
+                    show_type_literal_details(&literal2);
+                    show_comparison_details(&result);
+                }
+            }
+            
+            println!("\nTotal similar type literal pairs found: {}", type_literal_to_literal_pairs.len());
+        }
     }
 
-    Ok(similar_pairs.len() + type_literal_pairs.len())
+    Ok(similar_pairs.len() + type_literal_pairs.len() + type_literal_to_literal_pairs.len())
 }
 
 fn get_relative_path(file_path: &str) -> String {
@@ -836,10 +941,11 @@ fn check_classes(
     print: bool,
     no_inheritance: bool,
     no_implements: bool,
+    suggest: bool,
     exclude_patterns: &[String],
 ) -> anyhow::Result<usize> {
     use ignore::WalkBuilder;
-    use similarity_core::{extract_classes_from_code, find_similar_classes, ClassDefinition};
+    use similarity_core::{extract_classes_from_code, find_similar_classes};
     use std::collections::HashSet;
     use std::fs;
     use std::path::Path;
@@ -1022,8 +1128,8 @@ fn check_classes(
         println!("\nTotal similar class pairs found: {}", similar_pairs.len());
     }
     
-    // Suggest possible interface implementations
-    if !excluded_classes.is_empty() && !similar_pairs.is_empty() {
+    // Suggest possible interface implementations (only when --suggest is enabled)
+    if suggest && !excluded_classes.is_empty() {
         println!("\n{}", "=".repeat(60));
         println!("💡 Refactoring suggestions:");
         
@@ -1055,6 +1161,14 @@ fn check_classes(
                     println!("  - Base: {} -> [{}]", base, classes.join(", "));
                 }
             }
+        }
+        
+        // Suggest looking for similar classes if found
+        if !similar_pairs.is_empty() {
+            println!("\n⚠️  Found {} similar class pairs that might benefit from:", similar_pairs.len());
+            println!("  - Extracting a common interface");
+            println!("  - Creating a shared base class");
+            println!("  - Using composition instead of duplication");
         }
     }
 

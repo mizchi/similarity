@@ -1,9 +1,11 @@
-use similarity_core::language_parser::{LanguageParser, GenericFunctionDef, GenericTypeDef, Language};
-use similarity_core::tree::TreeNode;
-use tree_sitter::{Node, Parser};
-use std::rc::Rc;
-use std::error::Error;
 use crate::scss_simple_flattener::simple_flatten_scss;
+use similarity_core::language_parser::{
+    GenericFunctionDef, GenericTypeDef, Language, LanguageParser,
+};
+use similarity_core::tree::TreeNode;
+use std::error::Error;
+use std::rc::Rc;
+use tree_sitter::{Node, Parser};
 
 pub struct CssParser {
     parser: Parser,
@@ -20,19 +22,13 @@ impl CssParser {
     pub fn new() -> Self {
         let mut parser = Parser::new();
         parser.set_language(&tree_sitter_css::LANGUAGE.into()).unwrap();
-        Self {
-            parser,
-            is_scss: false,
-        }
+        Self { parser, is_scss: false }
     }
 
     pub fn new_scss() -> Self {
         let mut parser = Parser::new();
         parser.set_language(&tree_sitter_scss::language()).unwrap();
-        Self {
-            parser,
-            is_scss: true,
-        }
+        Self { parser, is_scss: true }
     }
 
     #[allow(clippy::only_used_in_recursion)]
@@ -60,8 +56,13 @@ impl CssParser {
 }
 
 impl LanguageParser for CssParser {
-    fn parse(&mut self, content: &str, _file_path: &str) -> Result<Rc<TreeNode>, Box<dyn Error + Send + Sync>> {
-        let tree = self.parser
+    fn parse(
+        &mut self,
+        content: &str,
+        _file_path: &str,
+    ) -> Result<Rc<TreeNode>, Box<dyn Error + Send + Sync>> {
+        let tree = self
+            .parser
             .parse(content, None)
             .ok_or_else(|| Box::<dyn Error + Send + Sync>::from("Failed to parse CSS/SCSS"))?;
 
@@ -79,13 +80,15 @@ impl LanguageParser for CssParser {
         if self.is_scss {
             let flat_rules = simple_flatten_scss(content)?;
             let mut functions = Vec::new();
-            
+
             for rule in flat_rules {
                 // Pass declarations through decorators field (temporary solution)
-                let decorators: Vec<String> = rule.declarations.iter()
+                let decorators: Vec<String> = rule
+                    .declarations
+                    .iter()
                     .map(|(prop, value)| format!("{prop}: {value}"))
                     .collect();
-                
+
                 functions.push(GenericFunctionDef {
                     name: rule.selector,
                     start_line: rule.start_line,
@@ -100,20 +103,21 @@ impl LanguageParser for CssParser {
                     decorators,
                 });
             }
-            
+
             return Ok(functions);
         }
-        
+
         // For regular CSS, use the original method
-        let tree = self.parser
+        let tree = self
+            .parser
             .parse(content, None)
             .ok_or_else(|| Box::<dyn Error + Send + Sync>::from("Failed to parse CSS/SCSS"))?;
 
         let root_node = tree.root_node();
         let mut functions = Vec::new();
-        
+
         extract_rules(&root_node, content, &mut functions);
-        
+
         Ok(functions)
     }
 
@@ -138,7 +142,7 @@ fn extract_rules(node: &Node, source: &str, functions: &mut Vec<GenericFunctionD
             "rule_set" | "ruleset" => {
                 if let Some(selector) = child.child_by_field_name("selectors") {
                     let selector_text = selector.utf8_text(source.as_bytes()).unwrap_or("");
-                    
+
                     functions.push(GenericFunctionDef {
                         name: selector_text.to_string(),
                         start_line: child.start_position().row as u32 + 1,
@@ -155,11 +159,12 @@ fn extract_rules(node: &Node, source: &str, functions: &mut Vec<GenericFunctionD
                 }
             }
             "media_statement" | "supports_statement" | "at_rule" => {
-                let at_keyword = child.child_by_field_name("at_keyword")
+                let at_keyword = child
+                    .child_by_field_name("at_keyword")
                     .or_else(|| child.child(0))
                     .and_then(|n| n.utf8_text(source.as_bytes()).ok())
                     .unwrap_or("@rule");
-                    
+
                 functions.push(GenericFunctionDef {
                     name: at_keyword.to_string(),
                     start_line: child.start_position().row as u32 + 1,
@@ -177,7 +182,7 @@ fn extract_rules(node: &Node, source: &str, functions: &mut Vec<GenericFunctionD
             "mixin_statement" => {
                 if let Some(name_node) = child.child_by_field_name("name") {
                     let name = name_node.utf8_text(source.as_bytes()).unwrap_or("mixin");
-                    
+
                     functions.push(GenericFunctionDef {
                         name: format!("@mixin {name}"),
                         start_line: child.start_position().row as u32 + 1,

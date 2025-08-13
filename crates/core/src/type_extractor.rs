@@ -86,7 +86,10 @@ impl TypeExtractor {
         let ret = Parser::new(&allocator, &self.source_text, source_type).parse();
 
         if !ret.errors.is_empty() {
-            return Err(format!("Parse errors: {:?}", ret.errors));
+            // Create a more readable error message
+            let error_messages: Vec<String> =
+                ret.errors.iter().map(|e| e.message.to_string()).collect();
+            return Err(format!("Parse errors: {}", error_messages.join(", ")));
         }
 
         let mut types = Vec::new();
@@ -116,7 +119,10 @@ impl TypeExtractor {
         let ret = Parser::new(&allocator, &self.source_text, source_type).parse();
 
         if !ret.errors.is_empty() {
-            return Err(format!("Parse errors: {:?}", ret.errors));
+            // Create a more readable error message
+            let error_messages: Vec<String> =
+                ret.errors.iter().map(|e| e.message.to_string()).collect();
+            return Err(format!("Parse errors: {}", error_messages.join(", ")));
         }
 
         let mut type_literals = Vec::new();
@@ -176,10 +182,18 @@ impl TypeExtractor {
         let mut properties = Vec::new();
 
         for signature in signatures {
-            if let oxc_ast::ast::TSSignature::TSPropertySignature(prop_sig) = signature {
-                if let Some(prop_def) = self.extract_property_from_signature(prop_sig) {
-                    properties.push(prop_def);
+            match signature {
+                oxc_ast::ast::TSSignature::TSPropertySignature(prop_sig) => {
+                    if let Some(prop_def) = self.extract_property_from_signature(prop_sig) {
+                        properties.push(prop_def);
+                    }
                 }
+                oxc_ast::ast::TSSignature::TSMethodSignature(method_sig) => {
+                    if let Some(prop_def) = self.extract_method_from_signature(method_sig) {
+                        properties.push(prop_def);
+                    }
+                }
+                _ => {}
             }
         }
 
@@ -216,6 +230,34 @@ impl TypeExtractor {
             type_annotation,
             optional: prop_sig.optional,
             readonly: prop_sig.readonly,
+        })
+    }
+
+    fn extract_method_from_signature(
+        &self,
+        method_sig: &oxc_ast::ast::TSMethodSignature,
+    ) -> Option<PropertyDefinition> {
+        let name = match &method_sig.key {
+            PropertyKey::StaticIdentifier(ident) => ident.name.as_str().to_string(),
+            PropertyKey::StringLiteral(str_lit) => str_lit.value.as_str().to_string(),
+            _ => return None,
+        };
+
+        // Extract method signature as a function type string
+        let params = self.extract_function_params(&method_sig.params);
+        let return_type = method_sig
+            .return_type
+            .as_ref()
+            .map(|rt| self.extract_type_string(&rt.type_annotation))
+            .unwrap_or_else(|| "void".to_string());
+        
+        let type_annotation = format!("({}) => {}", params, return_type);
+
+        Some(PropertyDefinition {
+            name,
+            type_annotation,
+            optional: method_sig.optional,
+            readonly: false,
         })
     }
 
@@ -258,10 +300,40 @@ impl TypeExtractor {
                 oxc_ast::ast::TSLiteral::BooleanLiteral(bool_lit) => bool_lit.value.to_string(),
                 _ => "unknown".to_string(),
             },
-            TSType::TSFunctionType(_) => "Function".to_string(),
+            TSType::TSFunctionType(func_type) => {
+                let params = self.extract_function_params(&func_type.params);
+                let return_type = self.extract_type_string(&func_type.return_type.type_annotation);
+                format!("({}) => {}", params, return_type)
+            }
             TSType::TSTypeLiteral(_) => "object".to_string(),
             _ => "unknown".to_string(),
         }
+    }
+
+    fn extract_function_params(&self, params: &oxc_ast::ast::FormalParameters) -> String {
+        let param_strings: Vec<String> = params
+            .items
+            .iter()
+            .map(|param| {
+                let param_name = match &param.pattern.kind {
+                    oxc_ast::ast::BindingPatternKind::BindingIdentifier(ident) => {
+                        ident.name.as_str()
+                    }
+                    _ => "_",
+                };
+                
+                let param_type = param
+                    .pattern
+                    .type_annotation
+                    .as_ref()
+                    .map(|ta| self.extract_type_string(&ta.type_annotation))
+                    .unwrap_or_else(|| "any".to_string());
+                
+                format!("{}: {}", param_name, param_type)
+            })
+            .collect();
+        
+        param_strings.join(", ")
     }
 
     fn extract_generics(

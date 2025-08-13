@@ -356,7 +356,8 @@ pub fn check_paths(
     }
 
     // Display all results together
-    let duplicate_count = display_all_results(all_results, print, filter_function, filter_function_body);
+    let duplicate_count =
+        display_all_results(all_results, print, filter_function, filter_function_body);
 
     Ok(duplicate_count)
 }

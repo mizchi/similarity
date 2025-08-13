@@ -1,7 +1,7 @@
 use clap::Parser as ClapParser;
 use ignore::WalkBuilder;
-use similarity_css::{CssParser, DuplicateAnalyzer, convert_to_css_rule};
 use similarity_core::language_parser::LanguageParser;
+use similarity_css::{convert_to_css_rule, CssParser, DuplicateAnalyzer};
 use std::path::PathBuf;
 
 #[derive(ClapParser, Debug)]
@@ -45,25 +45,22 @@ struct Args {
 fn find_files(path: &str, extension: &str) -> Vec<PathBuf> {
     let mut files = Vec::new();
     let target_path = std::path::Path::new(path);
-    
+
     if target_path.is_file() {
         if target_path.extension().and_then(|s| s.to_str()) == Some(extension) {
             files.push(target_path.to_path_buf());
         }
     } else if target_path.is_dir() {
-        let walker = WalkBuilder::new(target_path)
-            .follow_links(false)
-            .build();
-            
+        let walker = WalkBuilder::new(target_path).follow_links(false).build();
+
         for entry in walker.flatten() {
             let path = entry.path();
-            if path.is_file()
-                && path.extension().and_then(|s| s.to_str()) == Some(extension) {
-                    files.push(path.to_path_buf());
-                }
+            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some(extension) {
+                files.push(path.to_path_buf());
+            }
         }
     }
-    
+
     files
 }
 
@@ -86,16 +83,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Parse all CSS/SCSS files
     let mut all_rules = Vec::new();
-    let mut parser = if args.scss {
-        CssParser::new_scss()
-    } else {
-        CssParser::new()
-    };
-    
+    let mut parser = if args.scss { CssParser::new_scss() } else { CssParser::new() };
+
     for file in &files {
         let content = std::fs::read_to_string(file)?;
         let file_str = file.to_string_lossy();
-        
+
         match parser.extract_functions(&content, &file_str) {
             Ok(functions) => {
                 for func in functions {
@@ -108,19 +101,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    
+
     if all_rules.is_empty() {
         println!("\nNo CSS rules found to analyze");
         return Ok(());
     }
-    
+
     println!("\nFound {} CSS rules to analyze", all_rules.len());
-    
+
     // Analyze duplicates
     let css_rules: Vec<_> = all_rules.iter().map(|(_, rule)| rule.clone()).collect();
     let analyzer = DuplicateAnalyzer::new(css_rules, args.threshold);
     let result = analyzer.analyze();
-    
+
     // Output results
     match args.output.as_str() {
         "json" => {
@@ -137,40 +130,67 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn output_standard(result: &similarity_css::DuplicateAnalysisResult, all_rules: &[(String, similarity_css::CssRule)], threshold: f64) {
+fn output_standard(
+    result: &similarity_css::DuplicateAnalysisResult,
+    all_rules: &[(String, similarity_css::CssRule)],
+    threshold: f64,
+) {
     println!("\n=== CSS Similarity Analysis Results ===");
-    
+
     if !result.exact_duplicates.is_empty() {
         println!("\n## Exact Duplicates Found: {}", result.exact_duplicates.len());
         for (i, dup) in result.exact_duplicates.iter().enumerate() {
             let empty_string = String::new();
-            let file1 = all_rules.iter().find(|(_, r)| r.selector == dup.rule1.selector).map(|(f, _)| f).unwrap_or(&empty_string);
-            let file2 = all_rules.iter().find(|(_, r)| r.selector == dup.rule2.selector).map(|(f, _)| f).unwrap_or(&empty_string);
-            
+            let file1 = all_rules
+                .iter()
+                .find(|(_, r)| r.selector == dup.rule1.selector)
+                .map(|(f, _)| f)
+                .unwrap_or(&empty_string);
+            let file2 = all_rules
+                .iter()
+                .find(|(_, r)| r.selector == dup.rule2.selector)
+                .map(|(f, _)| f)
+                .unwrap_or(&empty_string);
+
             println!("\n{}. {} and {}", i + 1, dup.rule1.selector, dup.rule2.selector);
             println!("   Files: {file1} and {file2}");
-            println!("   Lines: {}-{} and {}-{}", 
-                dup.rule1.start_line, dup.rule1.end_line,
-                dup.rule2.start_line, dup.rule2.end_line);
+            println!(
+                "   Lines: {}-{} and {}-{}",
+                dup.rule1.start_line, dup.rule1.end_line, dup.rule2.start_line, dup.rule2.end_line
+            );
         }
     }
-    
+
     if !result.style_duplicates.is_empty() {
         println!("\n## Similar Styles Found: {}", result.style_duplicates.len());
         for (i, dup) in result.style_duplicates.iter().enumerate() {
             let empty_string = String::new();
-            let file1 = all_rules.iter().find(|(_, r)| r.selector == dup.rule1.selector).map(|(f, _)| f).unwrap_or(&empty_string);
-            let file2 = all_rules.iter().find(|(_, r)| r.selector == dup.rule2.selector).map(|(f, _)| f).unwrap_or(&empty_string);
-            
-            println!("\n{}. {} and {} (similarity: {:.2}%)", 
-                i + 1, dup.rule1.selector, dup.rule2.selector, dup.similarity * 100.0);
+            let file1 = all_rules
+                .iter()
+                .find(|(_, r)| r.selector == dup.rule1.selector)
+                .map(|(f, _)| f)
+                .unwrap_or(&empty_string);
+            let file2 = all_rules
+                .iter()
+                .find(|(_, r)| r.selector == dup.rule2.selector)
+                .map(|(f, _)| f)
+                .unwrap_or(&empty_string);
+
+            println!(
+                "\n{}. {} and {} (similarity: {:.2}%)",
+                i + 1,
+                dup.rule1.selector,
+                dup.rule2.selector,
+                dup.similarity * 100.0
+            );
             println!("   Files: {file1} and {file2}");
-            println!("   Lines: {}-{} and {}-{}", 
-                dup.rule1.start_line, dup.rule1.end_line,
-                dup.rule2.start_line, dup.rule2.end_line);
+            println!(
+                "   Lines: {}-{} and {}-{}",
+                dup.rule1.start_line, dup.rule1.end_line, dup.rule2.start_line, dup.rule2.end_line
+            );
         }
     }
-    
+
     if !result.bem_variations.is_empty() {
         println!("\n## BEM Component Variations Found: {}", result.bem_variations.len());
         for (i, variation) in result.bem_variations.iter().enumerate() {
@@ -179,11 +199,11 @@ fn output_standard(result: &similarity_css::DuplicateAnalysisResult, all_rules: 
             println!("   Similarity: {:.2}%", variation.similarity * 100.0);
         }
     }
-    
+
     if result.exact_duplicates.is_empty() && result.style_duplicates.is_empty() {
         println!("\nNo duplicates found with threshold >= {threshold}");
     }
-    
+
     // Summary
     println!("\n## Summary");
     println!("Total rules analyzed: {}", all_rules.len());
@@ -192,36 +212,75 @@ fn output_standard(result: &similarity_css::DuplicateAnalysisResult, all_rules: 
     println!("BEM components: {}", result.bem_variations.len());
 }
 
-fn output_vscode(result: &similarity_css::DuplicateAnalysisResult, all_rules: &[(String, similarity_css::CssRule)]) {
+fn output_vscode(
+    result: &similarity_css::DuplicateAnalysisResult,
+    all_rules: &[(String, similarity_css::CssRule)],
+) {
     // VSCode problem matcher format
     let empty_string = String::new();
     for dup in &result.exact_duplicates {
-        let file1 = all_rules.iter().find(|(_, r)| r.selector == dup.rule1.selector).map(|(f, _)| f).unwrap_or(&empty_string);
-        let file2 = all_rules.iter().find(|(_, r)| r.selector == dup.rule2.selector).map(|(f, _)| f).unwrap_or(&empty_string);
-        
-        println!("{}:{}:1: warning: Exact duplicate of {} at {}:{}", 
-            file1, dup.rule1.start_line, dup.rule2.selector, file2, dup.rule2.start_line);
+        let file1 = all_rules
+            .iter()
+            .find(|(_, r)| r.selector == dup.rule1.selector)
+            .map(|(f, _)| f)
+            .unwrap_or(&empty_string);
+        let file2 = all_rules
+            .iter()
+            .find(|(_, r)| r.selector == dup.rule2.selector)
+            .map(|(f, _)| f)
+            .unwrap_or(&empty_string);
+
+        println!(
+            "{}:{}:1: warning: Exact duplicate of {} at {}:{}",
+            file1, dup.rule1.start_line, dup.rule2.selector, file2, dup.rule2.start_line
+        );
     }
-    
+
     for dup in &result.style_duplicates {
-        let file1 = all_rules.iter().find(|(_, r)| r.selector == dup.rule1.selector).map(|(f, _)| f).unwrap_or(&empty_string);
-        let file2 = all_rules.iter().find(|(_, r)| r.selector == dup.rule2.selector).map(|(f, _)| f).unwrap_or(&empty_string);
-        
-        println!("{}:{}:1: warning: Similar to {} ({:.0}% similarity) at {}:{}", 
-            file1, dup.rule1.start_line, dup.rule2.selector, dup.similarity * 100.0, file2, dup.rule2.start_line);
+        let file1 = all_rules
+            .iter()
+            .find(|(_, r)| r.selector == dup.rule1.selector)
+            .map(|(f, _)| f)
+            .unwrap_or(&empty_string);
+        let file2 = all_rules
+            .iter()
+            .find(|(_, r)| r.selector == dup.rule2.selector)
+            .map(|(f, _)| f)
+            .unwrap_or(&empty_string);
+
+        println!(
+            "{}:{}:1: warning: Similar to {} ({:.0}% similarity) at {}:{}",
+            file1,
+            dup.rule1.start_line,
+            dup.rule2.selector,
+            dup.similarity * 100.0,
+            file2,
+            dup.rule2.start_line
+        );
     }
 }
 
-fn output_json(result: &similarity_css::DuplicateAnalysisResult, all_rules: &[(String, similarity_css::CssRule)]) -> Result<(), Box<dyn std::error::Error>> {
+fn output_json(
+    result: &similarity_css::DuplicateAnalysisResult,
+    all_rules: &[(String, similarity_css::CssRule)],
+) -> Result<(), Box<dyn std::error::Error>> {
     use serde_json::json;
-    
+
     let mut duplicates = Vec::new();
     let empty_string = String::new();
-    
+
     for dup in &result.exact_duplicates {
-        let file1 = all_rules.iter().find(|(_, r)| r.selector == dup.rule1.selector).map(|(f, _)| f).unwrap_or(&empty_string);
-        let file2 = all_rules.iter().find(|(_, r)| r.selector == dup.rule2.selector).map(|(f, _)| f).unwrap_or(&empty_string);
-        
+        let file1 = all_rules
+            .iter()
+            .find(|(_, r)| r.selector == dup.rule1.selector)
+            .map(|(f, _)| f)
+            .unwrap_or(&empty_string);
+        let file2 = all_rules
+            .iter()
+            .find(|(_, r)| r.selector == dup.rule2.selector)
+            .map(|(f, _)| f)
+            .unwrap_or(&empty_string);
+
         duplicates.push(json!({
             "type": "exact",
             "rule1": {
@@ -238,11 +297,19 @@ fn output_json(result: &similarity_css::DuplicateAnalysisResult, all_rules: &[(S
             }
         }));
     }
-    
+
     for dup in &result.style_duplicates {
-        let file1 = all_rules.iter().find(|(_, r)| r.selector == dup.rule1.selector).map(|(f, _)| f).unwrap_or(&empty_string);
-        let file2 = all_rules.iter().find(|(_, r)| r.selector == dup.rule2.selector).map(|(f, _)| f).unwrap_or(&empty_string);
-        
+        let file1 = all_rules
+            .iter()
+            .find(|(_, r)| r.selector == dup.rule1.selector)
+            .map(|(f, _)| f)
+            .unwrap_or(&empty_string);
+        let file2 = all_rules
+            .iter()
+            .find(|(_, r)| r.selector == dup.rule2.selector)
+            .map(|(f, _)| f)
+            .unwrap_or(&empty_string);
+
         duplicates.push(json!({
             "type": "similar",
             "similarity": dup.similarity,
@@ -260,10 +327,10 @@ fn output_json(result: &similarity_css::DuplicateAnalysisResult, all_rules: &[(S
             }
         }));
     }
-    
-    // For BEM variations, just output count for now  
+
+    // For BEM variations, just output count for now
     let bem_count = result.bem_variations.len();
-    
+
     let output = json!({
         "duplicates": duplicates,
         "bem_variations_count": bem_count,
@@ -274,7 +341,7 @@ fn output_json(result: &similarity_css::DuplicateAnalysisResult, all_rules: &[(S
             "bem_components": bem_count,
         }
     });
-    
+
     println!("{}", serde_json::to_string_pretty(&output)?);
     Ok(())
 }

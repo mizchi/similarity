@@ -1,4 +1,4 @@
-use crate::class_extractor::{ClassDefinition, ClassMethod, ClassProperty, MethodKind};
+use crate::class_extractor::{ClassDefinition, ClassMethod, ClassProperty};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]

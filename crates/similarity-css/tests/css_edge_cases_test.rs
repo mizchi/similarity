@@ -1,5 +1,5 @@
-use similarity_css::{CssParser, DuplicateAnalyzer, calculate_specificity, convert_to_css_rule};
 use similarity_core::language_parser::LanguageParser;
+use similarity_css::{calculate_specificity, convert_to_css_rule, CssParser, DuplicateAnalyzer};
 
 #[test]
 fn test_pseudo_elements_and_classes() {
@@ -93,28 +93,27 @@ fn test_pseudo_elements_and_classes() {
 
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
+
     // Check pseudo-elements (double colon)
-    let pseudo_elements: Vec<_> = rules.iter()
-        .filter(|r| r.name.contains("::"))
-        .map(|r| &r.name)
-        .collect();
-    
+    let pseudo_elements: Vec<_> =
+        rules.iter().filter(|r| r.name.contains("::")).map(|r| &r.name).collect();
+
     println!("Pseudo-elements found:");
     for elem in &pseudo_elements {
         println!("  - {elem}");
     }
-    
+
     assert_eq!(pseudo_elements.len(), 4, "Should find 4 pseudo-elements");
-    
+
     // Check pseudo-classes
-    let pseudo_classes: Vec<_> = rules.iter()
+    let pseudo_classes: Vec<_> = rules
+        .iter()
         .filter(|r| r.name.contains(":") && !r.name.contains("::"))
         .map(|r| &r.name)
         .collect();
-    
+
     assert!(!pseudo_classes.is_empty(), "Should find pseudo-classes");
-    
+
     // Test specificity of complex selectors
     let complex_selector = ".link:focus:not(:focus-visible)";
     let spec = calculate_specificity(complex_selector);
@@ -191,27 +190,29 @@ fn test_keyframes_and_animations() {
 
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
-    let css_rules: Vec<_> = rules.iter()
-        .map(|func| convert_to_css_rule(func, scss_content))
-        .collect();
-    
+
+    let css_rules: Vec<_> =
+        rules.iter().map(|func| convert_to_css_rule(func, scss_content)).collect();
+
     // Find animation rules
-    let animation_rules: Vec<_> = css_rules.iter()
+    let animation_rules: Vec<_> = css_rules
+        .iter()
         .filter(|r| r.declarations.iter().any(|(k, _)| k.contains("animation")))
         .collect();
-    
+
     println!("Animation rules found: {}", animation_rules.len());
     assert!(!animation_rules.is_empty(), "Should find animation rules");
-    
+
     // Check for duplicate animations
     let analyzer = DuplicateAnalyzer::new(css_rules, 0.8);
     let result = analyzer.analyze();
-    
-    let animation_duplicates: Vec<_> = result.exact_duplicates.iter()
+
+    let animation_duplicates: Vec<_> = result
+        .exact_duplicates
+        .iter()
         .filter(|d| d.rule1.selector.contains("fade-in") || d.rule1.selector.contains("spinner"))
         .collect();
-    
+
     assert!(!animation_duplicates.is_empty(), "Should find duplicate animation usages");
 }
 
@@ -308,30 +309,32 @@ fn test_css_grid_and_flexbox_complex() {
 
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
-    let css_rules: Vec<_> = rules.iter()
-        .map(|func| convert_to_css_rule(func, scss_content))
-        .collect();
-    
+
+    let css_rules: Vec<_> =
+        rules.iter().map(|func| convert_to_css_rule(func, scss_content)).collect();
+
     // Check for grid properties
-    let grid_rules: Vec<_> = css_rules.iter()
+    let grid_rules: Vec<_> = css_rules
+        .iter()
         .filter(|r| r.declarations.iter().any(|(k, _)| k.starts_with("grid")))
         .collect();
-    
+
     assert!(!grid_rules.is_empty(), "Should find grid rules");
-    
+
     // Check for flex properties
-    let flex_rules: Vec<_> = css_rules.iter()
+    let flex_rules: Vec<_> = css_rules
+        .iter()
         .filter(|r| r.declarations.iter().any(|(k, _)| k.starts_with("flex")))
         .collect();
-    
+
     assert!(!flex_rules.is_empty(), "Should find flex rules");
-    
+
     // Check named grid lines and areas
-    let named_grid_rules: Vec<_> = css_rules.iter()
+    let named_grid_rules: Vec<_> = css_rules
+        .iter()
         .filter(|r| r.declarations.iter().any(|(_, v)| v.contains("[") && v.contains("]")))
         .collect();
-    
+
     println!("Rules with named grid lines: {}", named_grid_rules.len());
     assert!(!named_grid_rules.is_empty(), "Should find named grid lines");
 }
@@ -424,31 +427,30 @@ fn test_css_functions_and_modern_features() {
 
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
-    let css_rules: Vec<_> = rules.iter()
-        .map(|func| convert_to_css_rule(func, scss_content))
-        .collect();
-    
+
+    let css_rules: Vec<_> =
+        rules.iter().map(|func| convert_to_css_rule(func, scss_content)).collect();
+
     // Check modern CSS functions
     let modern_functions = ["clamp(", "min(", "max(", "rgb(", "hsl(", "hwb(", "var("];
-    
+
     for func_name in &modern_functions {
-        let rules_with_func: Vec<_> = css_rules.iter()
+        let rules_with_func: Vec<_> = css_rules
+            .iter()
             .filter(|r| r.declarations.iter().any(|(_, v)| v.contains(func_name)))
             .collect();
-        
+
         println!("Rules using {}: {}", func_name, rules_with_func.len());
         assert!(!rules_with_func.is_empty(), "Should find rules using {func_name}");
     }
-    
+
     // Check logical properties
     let logical_props = ["margin-inline", "padding-block", "border-inline-start"];
-    
+
     for prop in &logical_props {
-        let rules_with_prop: Vec<_> = css_rules.iter()
-            .filter(|r| r.declarations.iter().any(|(k, _)| k == prop))
-            .collect();
-        
+        let rules_with_prop: Vec<_> =
+            css_rules.iter().filter(|r| r.declarations.iter().any(|(k, _)| k == prop)).collect();
+
         assert!(!rules_with_prop.is_empty(), "Should find rules using {prop}");
     }
 }
@@ -536,29 +538,33 @@ select {
 
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
+
     println!("Total rules generated from grouped selectors: {}", rules.len());
-    
+
     // Check heading rules
-    let heading_rules: Vec<_> = rules.iter()
-        .filter(|r| r.name.starts_with("h") && r.name.chars().nth(1).is_some_and(|c| c.is_numeric()))
+    let heading_rules: Vec<_> = rules
+        .iter()
+        .filter(|r| {
+            r.name.starts_with("h") && r.name.chars().nth(1).is_some_and(|c| c.is_numeric())
+        })
         .collect();
-    
+
     assert!(heading_rules.len() >= 6, "Should generate rules for all heading levels");
-    
+
     // Check input rules
-    let input_rules: Vec<_> = rules.iter()
-        .filter(|r| r.name.contains("input[type="))
-        .collect();
-    
+    let input_rules: Vec<_> = rules.iter().filter(|r| r.name.contains("input[type=")).collect();
+
     assert!(!input_rules.is_empty(), "Should generate rules for input types");
-    
+
     // Check nested combinations
-    let nested_heading_rules: Vec<_> = rules.iter()
-        .filter(|r| (r.name.contains(".card") || r.name.contains(".panel") || r.name.contains(".box")) 
-                && r.name.contains(" h"))
+    let nested_heading_rules: Vec<_> = rules
+        .iter()
+        .filter(|r| {
+            (r.name.contains(".card") || r.name.contains(".panel") || r.name.contains(".box"))
+                && r.name.contains(" h")
+        })
         .collect();
-    
+
     println!("Nested heading rules: {}", nested_heading_rules.len());
     assert!(!nested_heading_rules.is_empty(), "Should generate nested heading rules");
 }
@@ -654,31 +660,29 @@ $breakpoint-xl: 1200px;
 
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
-    let css_rules: Vec<_> = rules.iter()
-        .map(|func| convert_to_css_rule(func, scss_content))
-        .collect();
-    
+
+    let css_rules: Vec<_> =
+        rules.iter().map(|func| convert_to_css_rule(func, scss_content)).collect();
+
     // Check media query rules
-    let media_rules: Vec<_> = rules.iter()
-        .filter(|r| r.name.contains("@media"))
-        .collect();
-    
+    let media_rules: Vec<_> = rules.iter().filter(|r| r.name.contains("@media")).collect();
+
     println!("Media query rules: {}", media_rules.len());
-    
+
     // Analyze button patterns
-    let _button_rules: Vec<_> = css_rules.iter()
-        .filter(|r| r.selector.contains("button"))
-        .collect();
-    
+    let _button_rules: Vec<_> =
+        css_rules.iter().filter(|r| r.selector.contains("button")).collect();
+
     let analyzer = DuplicateAnalyzer::new(css_rules.clone(), 0.7);
     let result = analyzer.analyze();
-    
+
     // Should find similar button styles
-    let button_similarities: Vec<_> = result.style_duplicates.iter()
+    let button_similarities: Vec<_> = result
+        .style_duplicates
+        .iter()
         .filter(|d| d.rule1.selector.contains("button") && d.rule2.selector.contains("button"))
         .collect();
-    
+
     println!("Button style similarities found: {}", button_similarities.len());
     assert!(!button_similarities.is_empty(), "Should find similar button styles");
 }

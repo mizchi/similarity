@@ -1,23 +1,22 @@
-use similarity_css::{CssParser, CssRule};
 use similarity_core::language_parser::LanguageParser;
 use similarity_core::tree::TreeNode;
+use similarity_css::{CssParser, CssRule};
 use std::rc::Rc;
 
 #[allow(dead_code)]
 /// Helper to create CSS rules from parsed functions
-fn create_rules_from_functions(functions: Vec<similarity_core::language_parser::GenericFunctionDef>) -> Vec<CssRule> {
-    functions.into_iter()
+fn create_rules_from_functions(
+    functions: Vec<similarity_core::language_parser::GenericFunctionDef>,
+) -> Vec<CssRule> {
+    functions
+        .into_iter()
         .map(|func| {
             // Parse the selector to extract declarations
             let declarations = extract_declarations_from_name(&func.name);
-            
+
             // Create a simple tree for testing
-            let tree = TreeNode::new(
-                "rule".to_string(),
-                func.name.clone(),
-                0
-            );
-            
+            let tree = TreeNode::new("rule".to_string(), func.name.clone(), 0);
+
             CssRule {
                 selector: func.name,
                 declarations,
@@ -62,7 +61,7 @@ fn test_bootstrap_like_components() {
             border-color: #007bff;
         }
     "#;
-    
+
     let css2 = r#"
         .button {
             display: inline-block;
@@ -90,14 +89,14 @@ fn test_bootstrap_like_components() {
             border-color: #007bff;
         }
     "#;
-    
+
     let mut parser = CssParser::new();
     let funcs1 = parser.extract_functions(css1, "bootstrap.css").unwrap();
     let funcs2 = parser.extract_functions(css2, "custom.css").unwrap();
-    
+
     assert!(!funcs1.is_empty());
     assert!(!funcs2.is_empty());
-    
+
     // The button classes should be detected
     assert!(funcs1.iter().any(|f| f.name.contains(".btn")));
     assert!(funcs2.iter().any(|f| f.name.contains(".button")));
@@ -120,7 +119,7 @@ fn test_flexbox_grid_patterns() {
             margin: 0.5rem;
         }
     "#;
-    
+
     let css2 = r#"
         .wrapper {
             display: flex;
@@ -138,11 +137,11 @@ fn test_flexbox_grid_patterns() {
             margin: 8px; /* Same as 0.5rem with 16px base */
         }
     "#;
-    
+
     let mut parser = CssParser::new();
     let funcs1 = parser.extract_functions(css1, "flex1.css").unwrap();
     let funcs2 = parser.extract_functions(css2, "flex2.css").unwrap();
-    
+
     // Both should have container and item rules
     assert_eq!(funcs1.len(), 2);
     assert_eq!(funcs2.len(), 2);
@@ -165,7 +164,7 @@ fn test_grid_layout_patterns() {
             border: 1px solid #ddd;
         }
     "#;
-    
+
     let css2 = r#"
         .grid-wrapper {
             display: grid;
@@ -184,11 +183,11 @@ fn test_grid_layout_patterns() {
             border-color: #ddd;
         }
     "#;
-    
+
     let mut parser = CssParser::new();
     let funcs1 = parser.extract_functions(css1, "grid1.css").unwrap();
     let funcs2 = parser.extract_functions(css2, "grid2.css").unwrap();
-    
+
     assert_eq!(funcs1.len(), 2);
     assert_eq!(funcs2.len(), 2);
 }
@@ -215,13 +214,13 @@ fn test_responsive_utilities() {
             .mobile-only { display: block; }
         }
     "#;
-    
+
     let mut parser = CssParser::new();
     let functions = parser.extract_functions(css, "utilities.css").unwrap();
-    
+
     // Should detect regular rules and media queries
     assert!(functions.len() > 7); // All utility classes plus media queries
-    
+
     // Check for media queries
     assert!(functions.iter().any(|f| f.name.contains("@media")));
 }
@@ -241,7 +240,7 @@ fn test_animation_and_transition_patterns() {
             animation-fill-mode: both;
         }
     "#;
-    
+
     let css2 = r#"
         .fade-enter {
             animation: fadeIn 300ms ease-in;
@@ -254,11 +253,11 @@ fn test_animation_and_transition_patterns() {
             animation: slideUp 500ms cubic-bezier(0.4, 0, 0.2, 1) both;
         }
     "#;
-    
+
     let mut parser = CssParser::new();
     let funcs1 = parser.extract_functions(css1, "anim1.css").unwrap();
     let funcs2 = parser.extract_functions(css2, "anim2.css").unwrap();
-    
+
     assert_eq!(funcs1.len(), 2);
     assert_eq!(funcs2.len(), 2);
 }
@@ -309,10 +308,10 @@ fn test_scss_nesting_and_mixins() {
             @include button-style(#28a745);
         }
     "#;
-    
+
     let mut parser = CssParser::new_scss();
     let functions = parser.extract_functions(scss, "component.scss").unwrap();
-    
+
     // Should detect nested rules and mixins
     assert!(functions.len() >= 3); // At least .card, mixin, and button classes
     assert!(functions.iter().any(|f| f.name.contains("@mixin")));
@@ -345,17 +344,17 @@ fn test_complex_selectors() {
         h1, h2, h3, h4, h5, h6 { font-family: "Helvetica", sans-serif; }
         .btn, .button, [role="button"] { cursor: pointer; }
     "#;
-    
+
     let mut parser = CssParser::new();
     let functions = parser.extract_functions(css, "selectors.css").unwrap();
-    
+
     // Should handle all complex selectors
     assert!(functions.len() >= 10);
-    
+
     // Check various selector types are captured
-    assert!(functions.iter().any(|f| f.name.contains("[")));  // Attribute
-    assert!(functions.iter().any(|f| f.name.contains(":")));  // Pseudo-class
+    assert!(functions.iter().any(|f| f.name.contains("["))); // Attribute
+    assert!(functions.iter().any(|f| f.name.contains(":"))); // Pseudo-class
     assert!(functions.iter().any(|f| f.name.contains("::"))); // Pseudo-element
-    assert!(functions.iter().any(|f| f.name.contains("+")));  // Adjacent sibling
-    assert!(functions.iter().any(|f| f.name.contains("~")));  // General sibling
+    assert!(functions.iter().any(|f| f.name.contains("+"))); // Adjacent sibling
+    assert!(functions.iter().any(|f| f.name.contains("~"))); // General sibling
 }

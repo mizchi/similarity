@@ -1,5 +1,8 @@
-use similarity_css::{CssParser, CssRule, calculate_rule_similarity, calculate_specificity, SelectorAnalysis, convert_to_css_rule};
 use similarity_core::language_parser::LanguageParser;
+use similarity_css::{
+    calculate_rule_similarity, calculate_specificity, convert_to_css_rule, CssParser, CssRule,
+    SelectorAnalysis,
+};
 
 #[test]
 fn test_bem_exact_duplicate_detection() {
@@ -64,44 +67,43 @@ fn test_bem_exact_duplicate_detection() {
 
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
+
     println!("Found {} rules", rules.len());
     for rule in &rules {
         println!("  - {} (lines {}-{})", rule.name, rule.body_start_line, rule.body_end_line);
     }
-    
+
     // Convert to CssRule for easier testing
-    let css_rules: Vec<_> = rules.iter()
-        .map(|func| convert_to_css_rule(func, scss_content))
-        .collect();
+    let css_rules: Vec<_> =
+        rules.iter().map(|func| convert_to_css_rule(func, scss_content)).collect();
 
     // Test exact duplicates
-    let card_rules: Vec<&CssRule> = css_rules.iter()
-        .filter(|r| r.selector == ".card")
-        .collect();
-    
+    let card_rules: Vec<&CssRule> = css_rules.iter().filter(|r| r.selector == ".card").collect();
+
     assert_eq!(card_rules.len(), 3, "Should find 3 .card rules");
-    
+
     // First two .card rules should be exact duplicates
     let analysis1 = SelectorAnalysis::new(&card_rules[0].selector);
     let analysis2 = SelectorAnalysis::new(&card_rules[1].selector);
     assert!(analysis1.is_duplicate_of(&analysis2), "Same selectors should be duplicates");
-    
+
     // Compare declarations
     let sim_0_1 = calculate_rule_similarity(card_rules[0], card_rules[1]);
     assert!(sim_0_1 > 0.99, "Exact duplicate rules should have very high similarity");
-    
+
     let sim_0_2 = calculate_rule_similarity(card_rules[0], card_rules[2]);
     println!("Similarity between similar rules: {sim_0_2}");
     println!("Rule 0: {:?}", card_rules[0].declarations);
     println!("Rule 2: {:?}", card_rules[2].declarations);
-    assert!(sim_0_2 > 0.7 && sim_0_2 < 0.99, "Similar but not exact rules should have high but not perfect similarity");
-    
+    assert!(
+        sim_0_2 > 0.7 && sim_0_2 < 0.99,
+        "Similar but not exact rules should have high but not perfect similarity"
+    );
+
     // Test modifier duplicates
-    let modifier_rules: Vec<&CssRule> = css_rules.iter()
-        .filter(|r| r.selector == ".card--primary")
-        .collect();
-    
+    let modifier_rules: Vec<&CssRule> =
+        css_rules.iter().filter(|r| r.selector == ".card--primary").collect();
+
     assert_eq!(modifier_rules.len(), 2, "Should find 2 .card--primary rules");
     let mod_sim = calculate_rule_similarity(modifier_rules[0], modifier_rules[1]);
     assert!(mod_sim > 0.99, "Duplicate modifiers should have very high similarity");
@@ -146,25 +148,25 @@ fn test_bem_specificity_hierarchy() {
 
     let mut parser = CssParser::new_scss();
     let _rules = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
+
     // Test specificity ordering
-    let selectors = [".button",
+    let selectors = [
+        ".button",
         ".button__icon",
         ".button--primary",
         ".button--primary .button__icon",
         ".button--primary:hover",
-        "#special-button.button"];
-    
-    let specificities: Vec<_> = selectors.iter()
-        .map(|s| (s, calculate_specificity(s)))
-        .collect();
-    
+        "#special-button.button",
+    ];
+
+    let specificities: Vec<_> = selectors.iter().map(|s| (s, calculate_specificity(s))).collect();
+
     // Check specificity values
     assert_eq!(specificities[0].1, calculate_specificity(".button")); // (0, 1, 0)
     assert_eq!(specificities[3].1, calculate_specificity(".button--primary .button__icon")); // (0, 2, 0)
     assert_eq!(specificities[4].1, calculate_specificity(".button--primary:hover")); // (0, 2, 0)
     assert_eq!(specificities[5].1, calculate_specificity("#special-button.button")); // (1, 1, 0)
-    
+
     // ID selector should have highest specificity
     let id_spec = &specificities[5].1;
     for (_, spec) in &specificities[0..5] {
@@ -218,20 +220,16 @@ fn test_bem_nested_scss_patterns() {
 
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
+
     // SCSS parser should flatten nested rules
-    let modal_rules: Vec<_> = rules.iter()
-        .filter(|r| r.name.starts_with(".modal"))
-        .collect();
-    
+    let modal_rules: Vec<_> = rules.iter().filter(|r| r.name.starts_with(".modal")).collect();
+
     // Should find multiple modal-related rules
     assert!(modal_rules.len() >= 2, "Should find modal rules");
-    
+
     // Check for exact duplicates
-    let base_modal_rules: Vec<_> = rules.iter()
-        .filter(|r| r.name == ".modal")
-        .collect();
-    
+    let base_modal_rules: Vec<_> = rules.iter().filter(|r| r.name == ".modal").collect();
+
     assert_eq!(base_modal_rules.len(), 2, "Should find 2 .modal base rules");
 }
 
@@ -285,23 +283,22 @@ fn test_rule_level_duplicate_analysis() {
 
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
-    let css_rules: Vec<_> = rules.iter()
-        .map(|func| convert_to_css_rule(func, scss_content))
-        .collect();
-    
+
+    let css_rules: Vec<_> =
+        rules.iter().map(|func| convert_to_css_rule(func, scss_content)).collect();
+
     // Analyze duplicates
     let mut exact_duplicates = Vec::new();
     let mut similar_rules = Vec::new();
-    
+
     for (i, rule1) in css_rules.iter().enumerate() {
         for (j, rule2) in css_rules.iter().enumerate() {
             if i >= j {
                 continue;
             }
-            
+
             let similarity = calculate_rule_similarity(rule1, rule2);
-            
+
             if rule1.selector == rule2.selector && similarity > 0.99 {
                 exact_duplicates.push((i, j, similarity));
             } else if similarity > 0.8 {
@@ -309,14 +306,13 @@ fn test_rule_level_duplicate_analysis() {
             }
         }
     }
-    
+
     // Should find exact duplicates
     assert!(!exact_duplicates.is_empty(), "Should find exact duplicate rules");
-    
+
     // Should find similar rules (same content, different selector)
     assert!(!similar_rules.is_empty(), "Should find similar rules");
 }
-
 
 #[test]
 fn test_bem_component_variations() {
@@ -366,24 +362,20 @@ fn test_bem_component_variations() {
 
     let mut parser = CssParser::new_scss();
     let rules = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
+
     // Group by BEM component
     let alert_base: Vec<_> = rules.iter().filter(|r| r.name == ".alert").collect();
     let alert_elements: Vec<_> = rules.iter().filter(|r| r.name.starts_with(".alert__")).collect();
     let alert_modifiers: Vec<_> = rules.iter().filter(|r| r.name.starts_with(".alert--")).collect();
-    
+
     assert!(!alert_base.is_empty(), "Should find base alert rules");
     assert_eq!(alert_elements.len(), 2, "Should find 2 alert elements");
     assert_eq!(alert_modifiers.len(), 4, "Should find 4 alert modifier rules");
-    
+
     // Check for duplicate modifiers
-    let success_alerts: Vec<_> = rules.iter()
-        .filter(|r| r.name == ".alert--success")
-        .collect();
+    let success_alerts: Vec<_> = rules.iter().filter(|r| r.name == ".alert--success").collect();
     assert_eq!(success_alerts.len(), 2, "Should find duplicate success alerts");
-    
-    let error_alerts: Vec<_> = rules.iter()
-        .filter(|r| r.name == ".alert--error")
-        .collect();
+
+    let error_alerts: Vec<_> = rules.iter().filter(|r| r.name == ".alert--error").collect();
     assert_eq!(error_alerts.len(), 2, "Should find 2 error alerts");
 }

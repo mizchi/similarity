@@ -1,9 +1,9 @@
+use crate::shorthand_expander::expand_shorthand_properties;
 use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
 use similarity_core::tree::TreeNode;
 use similarity_core::tsed;
 use std::rc::Rc;
-use crate::shorthand_expander::expand_shorthand_properties;
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
 pub struct CssRule {
@@ -53,11 +53,11 @@ pub fn compare_css_rules(
     threshold: f64,
 ) -> Vec<CssSimilarityResult> {
     let mut results = Vec::new();
-    
+
     for rule1 in rules1 {
         for rule2 in rules2 {
             let similarity = calculate_rule_similarity(rule1, rule2);
-            
+
             if similarity >= threshold {
                 results.push(CssSimilarityResult {
                     name1: rule1.selector.clone(),
@@ -73,32 +73,27 @@ pub fn compare_css_rules(
             }
         }
     }
-    
+
     results
 }
 
-pub fn calculate_rule_similarity(
-    rule1: &CssRule,
-    rule2: &CssRule,
-) -> f64 {
+pub fn calculate_rule_similarity(rule1: &CssRule, rule2: &CssRule) -> f64 {
     let selector_similarity = calculate_selector_similarity(&rule1.selector, &rule2.selector);
-    
-    let ast_similarity = tsed::calculate_tsed(&rule1.tree, &rule2.tree, &tsed::TSEDOptions {
-        size_penalty: true,
-        ..Default::default()
-    });
-    
+
+    let ast_similarity = tsed::calculate_tsed(
+        &rule1.tree,
+        &rule2.tree,
+        &tsed::TSEDOptions { size_penalty: true, ..Default::default() },
+    );
+
     // Expand shorthand properties before comparison
     let expanded_decls1 = expand_shorthand_properties(&rule1.declarations);
     let expanded_decls2 = expand_shorthand_properties(&rule2.declarations);
-    let declaration_similarity = calculate_declaration_similarity(&expanded_decls1, &expanded_decls2);
-    
-    let weights = CssSimilarityWeights {
-        selector: 0.4,
-        ast: 0.0,
-        declarations: 0.6,
-    };
-    
+    let declaration_similarity =
+        calculate_declaration_similarity(&expanded_decls1, &expanded_decls2);
+
+    let weights = CssSimilarityWeights { selector: 0.4, ast: 0.0, declarations: 0.6 };
+
     weights.selector * selector_similarity
         + weights.ast * ast_similarity
         + weights.declarations * declaration_similarity
@@ -114,13 +109,13 @@ pub fn calculate_selector_similarity(selector1: &str, selector2: &str) -> f64 {
     if selector1 == selector2 {
         return 1.0;
     }
-    
+
     let tokens1 = tokenize_selector(selector1);
     let tokens2 = tokenize_selector(selector2);
-    
+
     let common = tokens1.intersection(&tokens2).count() as f64;
     let total = tokens1.union(&tokens2).count() as f64;
-    
+
     if total > 0.0 {
         common / total
     } else {
@@ -130,33 +125,30 @@ pub fn calculate_selector_similarity(selector1: &str, selector2: &str) -> f64 {
 
 fn tokenize_selector(selector: &str) -> std::collections::HashSet<String> {
     let mut tokens = std::collections::HashSet::new();
-    
-    let parts: Vec<&str> = selector.split_whitespace()
+
+    let parts: Vec<&str> = selector
+        .split_whitespace()
         .flat_map(|s| s.split(','))
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())
         .collect();
-        
+
     for part in parts {
         tokens.insert(part.to_string());
-        
-        let classes: Vec<String> = part.split('.')
-            .filter(|s| !s.is_empty())
-            .map(|s| format!(".{s}"))
-            .collect();
+
+        let classes: Vec<String> =
+            part.split('.').filter(|s| !s.is_empty()).map(|s| format!(".{s}")).collect();
         tokens.extend(classes);
-        
-        let ids: Vec<String> = part.split('#')
-            .filter(|s| !s.is_empty())
-            .map(|s| format!("#{s}"))
-            .collect();
+
+        let ids: Vec<String> =
+            part.split('#').filter(|s| !s.is_empty()).map(|s| format!("#{s}")).collect();
         tokens.extend(ids);
-        
+
         if part.contains('[') && part.contains(']') {
             tokens.insert("[attr]".to_string());
         }
     }
-    
+
     tokens
 }
 
@@ -167,17 +159,13 @@ pub fn calculate_declaration_similarity(
     if decls1.is_empty() && decls2.is_empty() {
         return 1.0;
     }
-    
-    let map1: IndexMap<&str, &str> = decls1.iter()
-        .map(|(k, v)| (k.as_str(), v.as_str()))
-        .collect();
-    let map2: IndexMap<&str, &str> = decls2.iter()
-        .map(|(k, v)| (k.as_str(), v.as_str()))
-        .collect();
-    
+
+    let map1: IndexMap<&str, &str> = decls1.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+    let map2: IndexMap<&str, &str> = decls2.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+
     let mut matching_properties = 0.0;
     let total_properties = map1.len().max(map2.len()) as f64;
-    
+
     for (prop, value1) in &map1 {
         if let Some(value2) = map2.get(prop) {
             if value1 == value2 {
@@ -187,7 +175,7 @@ pub fn calculate_declaration_similarity(
             }
         }
     }
-    
+
     if total_properties > 0.0 {
         matching_properties / total_properties
     } else {
@@ -199,30 +187,27 @@ fn calculate_value_similarity(value1: &str, value2: &str) -> f64 {
     if value1 == value2 {
         return 1.0;
     }
-    
+
     let norm1 = normalize_css_value(value1);
     let norm2 = normalize_css_value(value2);
-    
+
     if norm1 == norm2 {
         return 0.9;
     }
-    
+
     if is_color_value(&norm1) && is_color_value(&norm2) {
         return 0.7;
     }
-    
+
     if is_numeric_value(&norm1) && is_numeric_value(&norm2) {
         return 0.6;
     }
-    
+
     0.0
 }
 
 fn normalize_css_value(value: &str) -> String {
-    value.trim()
-        .to_lowercase()
-        .replace("  ", " ")
-        .replace(" !important", "")
+    value.trim().to_lowercase().replace("  ", " ").replace(" !important", "")
 }
 
 fn is_color_value(value: &str) -> bool {
@@ -233,8 +218,17 @@ fn is_color_value(value: &str) -> bool {
         || value.starts_with("hsla")
         || matches!(
             value,
-            "red" | "green" | "blue" | "white" | "black" | "gray" | "grey"
-                | "yellow" | "orange" | "purple" | "pink"
+            "red"
+                | "green"
+                | "blue"
+                | "white"
+                | "black"
+                | "gray"
+                | "grey"
+                | "yellow"
+                | "orange"
+                | "purple"
+                | "pink"
         )
 }
 

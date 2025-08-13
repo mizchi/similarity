@@ -23,7 +23,10 @@ pub fn parse_and_convert_to_tree(
     let ret = Parser::new(&allocator, source_text, source_type).parse();
 
     if !ret.errors.is_empty() {
-        return Err(format!("Parse errors: {:?}", ret.errors));
+        // Create a more readable error message
+        let error_messages: Vec<String> =
+            ret.errors.iter().map(|e| e.message.to_string()).collect();
+        return Err(format!("Parse errors: {}", error_messages.join(", ")));
     }
 
     let mut id_counter = 0;

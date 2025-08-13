@@ -5,7 +5,7 @@ use std::time::Instant;
 #[ignore] // Run with: cargo test --package similarity-css performance_test -- --ignored
 fn test_expansion_performance() {
     let mut declarations = Vec::new();
-    
+
     // Generate a large number of declarations
     for i in 0..1000 {
         declarations.push((format!("margin-{i}"), "10px 20px 30px 40px".to_string()));
@@ -14,14 +14,18 @@ fn test_expansion_performance() {
         declarations.push((format!("flex-{i}"), "1 1 auto".to_string()));
         declarations.push((format!("gap-{i}"), "10px 20px".to_string()));
     }
-    
+
     let start = Instant::now();
     let expanded = expand_shorthand_properties(&declarations);
     let duration = start.elapsed();
-    
-    println!("Expanded {} declarations to {} in {:?}", 
-             declarations.len(), expanded.len(), duration);
-    
+
+    println!(
+        "Expanded {} declarations to {} in {:?}",
+        declarations.len(),
+        expanded.len(),
+        duration
+    );
+
     // Basic sanity checks
     assert!(expanded.len() > declarations.len());
     assert!(duration.as_millis() < 100); // Should be fast
@@ -35,18 +39,14 @@ fn test_memory_efficiency() {
         ("padding".to_string(), "20px 30px".to_string()),
         ("border".to_string(), "1px solid red".to_string()),
     ];
-    
+
     let expanded = expand_shorthand_properties(&declarations);
-    
+
     // Count total string bytes
-    let original_bytes: usize = declarations.iter()
-        .map(|(k, v)| k.len() + v.len())
-        .sum();
-        
-    let expanded_bytes: usize = expanded.iter()
-        .map(|(k, v)| k.len() + v.len())
-        .sum();
-    
+    let original_bytes: usize = declarations.iter().map(|(k, v)| k.len() + v.len()).sum();
+
+    let expanded_bytes: usize = expanded.iter().map(|(k, v)| k.len() + v.len()).sum();
+
     // Expansion should not create excessive memory usage
     // (property names are longer but values are reused)
     assert!(expanded_bytes < original_bytes * 10);
@@ -61,15 +61,13 @@ fn test_repeated_properties() {
         ("margin-top".to_string(), "30px".to_string()),
         ("margin".to_string(), "40px".to_string()),
     ];
-    
+
     let expanded = expand_shorthand_properties(&declarations);
-    
+
     // Should preserve all declarations in order
-    let margin_tops: Vec<&String> = expanded.iter()
-        .filter(|(k, _)| k == "margin-top")
-        .map(|(_, v)| v)
-        .collect();
-    
+    let margin_tops: Vec<&String> =
+        expanded.iter().filter(|(k, _)| k == "margin-top").map(|(_, v)| v).collect();
+
     // We should have expansions from all margin shorthands plus the explicit one
     assert_eq!(margin_tops.len(), 4); // 3 from expansions + 1 explicit
 }
@@ -82,18 +80,17 @@ fn test_deeply_nested_values() {
         ("padding".to_string(), "clamp(5px, 2%, 20px) clamp(10px, 4%, 40px)".to_string()),
         ("transform".to_string(), "translateX(calc(var(--x) * 1px))".to_string()),
     ];
-    
+
     let expanded = expand_shorthand_properties(&declarations);
-    
+
     // Complex calc expressions should be preserved
-    assert!(expanded.iter().any(|(k, v)| 
-        k == "margin-top" && v.contains("calc") && v.contains("max") && v.contains("min")
-    ));
-    
+    assert!(expanded.iter().any(|(k, v)| k == "margin-top"
+        && v.contains("calc")
+        && v.contains("max")
+        && v.contains("min")));
+
     // Clamp values should be distributed correctly
-    assert!(expanded.iter().any(|(k, v)| 
-        k == "padding-top" && v.contains("clamp(5px")
-    ));
+    assert!(expanded.iter().any(|(k, v)| k == "padding-top" && v.contains("clamp(5px")));
 }
 
 #[test]
@@ -117,12 +114,12 @@ fn test_stress_all_shorthands() {
         ("transition".to_string(), "all 0.3s".to_string()),
         ("animation".to_string(), "none".to_string()),
     ];
-    
+
     let expanded = expand_shorthand_properties(&declarations);
-    
+
     // Should have many more properties after expansion
     assert!(expanded.len() >= 50);
-    
+
     // Spot check some expansions
     assert!(expanded.iter().any(|(k, v)| k == "margin-top" && v == "1px"));
     assert!(expanded.iter().any(|(k, v)| k == "padding-right" && v == "6px"));
@@ -136,7 +133,7 @@ fn test_empty_and_invalid_input() {
     let empty_decls: Vec<(String, String)> = vec![];
     let expanded_empty = expand_shorthand_properties(&empty_decls);
     assert_eq!(expanded_empty.len(), 0);
-    
+
     // Invalid but safe inputs
     let invalid_decls = vec![
         ("".to_string(), "value".to_string()),
@@ -144,9 +141,9 @@ fn test_empty_and_invalid_input() {
         ("margin".to_string(), "".to_string()),
         ("padding".to_string(), "   ".to_string()),
     ];
-    
+
     let expanded_invalid = expand_shorthand_properties(&invalid_decls);
-    
+
     // Should handle gracefully
     assert!(expanded_invalid.iter().any(|(k, _)| k.is_empty()));
     assert!(expanded_invalid.iter().any(|(_, v)| v.is_empty()));

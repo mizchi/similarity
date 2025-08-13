@@ -118,6 +118,11 @@ pub fn normalize_type_name(type_name: &str) -> String {
         normalized = normalized.replace(original, replacement);
     }
 
+    // Normalize function types: convert arrow function to method syntax
+    // Pattern 1: () => ReturnType -> (): ReturnType
+    // Pattern 2: (param: Type) => ReturnType -> (param: Type): ReturnType
+    normalized = normalize_function_syntax(&normalized);
+
     // Sort union types for consistent comparison
     if normalized.contains(" | ") {
         let mut union_types: Vec<&str> = normalized.split(" | ").map(|t| t.trim()).collect();
@@ -133,6 +138,65 @@ pub fn normalize_type_name(type_name: &str) -> String {
     }
 
     normalized
+}
+
+/// Normalize function syntax to a consistent format
+/// Converts arrow functions to method syntax: `() => T` becomes `(): T`
+fn normalize_function_syntax(type_str: &str) -> String {
+    let mut result = type_str.to_string();
+    
+    // Find and replace arrow function patterns
+    // We need to be careful with nested types and preserve them correctly
+    
+    // Simple pattern: () => Type
+    if let Some(arrow_pos) = result.find(" => ") {
+        // Check if this is a function type at the top level
+        // Find the matching opening parenthesis
+        let before_arrow = &result[..arrow_pos];
+        
+        // Count parentheses to find the start of the function signature
+        let mut paren_count = 0;
+        let mut func_start = None;
+        
+        for (i, ch) in before_arrow.chars().rev().enumerate() {
+            match ch {
+                ')' => paren_count += 1,
+                '(' => {
+                    paren_count -= 1;
+                    if paren_count == 0 {
+                        func_start = Some(arrow_pos - i - 1);
+                        break;
+                    }
+                }
+                _ => {
+                    // If we hit a non-parenthesis character while not inside parentheses,
+                    // this might not be a simple function type
+                    if paren_count == 0 && !ch.is_whitespace() {
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if let Some(start) = func_start {
+            // Check if this looks like a function signature
+            let func_params = &result[start..arrow_pos].trim();
+            if func_params.starts_with('(') && func_params.ends_with(')') {
+                // Extract return type (everything after =>)
+                let return_type = result[arrow_pos + 4..].trim();
+                
+                // Build the normalized version
+                result = format!("{}{}: {}{}", 
+                    &result[..start],
+                    func_params,
+                    return_type,
+                    ""  // We might have more content after
+                );
+            }
+        }
+    }
+    
+    result
 }
 
 /// Generate a normalized signature for the type
@@ -290,27 +354,26 @@ pub struct PropertyMatch {
 pub fn find_property_matches(
     type1: &NormalizedType,
     type2: &NormalizedType,
-    threshold: f64,
+    _threshold: f64,  // Keep for API compatibility but not used
 ) -> Vec<PropertyMatch> {
     let mut matches = Vec::new();
 
+    // Only match properties with exactly the same name
     for (prop1, type1_annotation) in &type1.properties {
-        for (prop2, type2_annotation) in &type2.properties {
-            let name_similarity = calculate_property_similarity(prop1, prop2);
+        if let Some(type2_annotation) = type2.properties.get(prop1) {
+            let name_similarity = 1.0;  // Exact match only
             let type_similarity = calculate_type_similarity(type1_annotation, type2_annotation);
-
-            // Weight name similarity more heavily than type similarity
-            let overall_similarity = (name_similarity * 0.7) + (type_similarity * 0.3);
-
-            if overall_similarity >= threshold {
-                matches.push(PropertyMatch {
-                    prop1: prop1.clone(),
-                    prop2: prop2.clone(),
-                    name_similarity,
-                    type_similarity,
-                    overall_similarity,
-                });
-            }
+            
+            // Since names must match exactly, overall similarity is just type similarity
+            let overall_similarity = type_similarity;
+            
+            matches.push(PropertyMatch {
+                prop1: prop1.clone(),
+                prop2: prop1.clone(),  // Same property name
+                name_similarity,
+                type_similarity,
+                overall_similarity,
+            });
         }
     }
 

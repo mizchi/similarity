@@ -1,8 +1,7 @@
-
 /// Expand CSS shorthand properties into their longhand equivalents
 pub fn expand_shorthand_properties(declarations: &[(String, String)]) -> Vec<(String, String)> {
     let mut expanded = Vec::new();
-    
+
     for (property, value) in declarations {
         match property.as_str() {
             "margin" => expand_box_model_shorthand(&mut expanded, "margin", value),
@@ -27,14 +26,14 @@ pub fn expand_shorthand_properties(declarations: &[(String, String)]) -> Vec<(St
             }
         }
     }
-    
+
     expanded
 }
 
 /// Expand margin/padding shorthand (1-4 values)
 fn expand_box_model_shorthand(expanded: &mut Vec<(String, String)>, prefix: &str, value: &str) {
     let parts: Vec<&str> = value.split_whitespace().collect();
-    
+
     match parts.len() {
         1 => {
             // All sides same value
@@ -80,9 +79,9 @@ fn expand_border_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
     let mut width = "medium";
     let mut style = "none";
     let mut color = "currentcolor";
-    
+
     let parts: Vec<&str> = value.split_whitespace().collect();
-    
+
     for part in parts {
         if is_border_width(part) {
             width = part;
@@ -93,7 +92,7 @@ fn expand_border_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
             color = part;
         }
     }
-    
+
     // Apply to all sides
     for side in &["top", "right", "bottom", "left"] {
         expanded.push((format!("border-{side}-width"), width.to_string()));
@@ -105,7 +104,7 @@ fn expand_border_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
 /// Expand border-radius shorthand
 fn expand_border_radius_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
     let parts: Vec<&str> = value.split_whitespace().collect();
-    
+
     match parts.len() {
         1 => {
             let val = parts[0];
@@ -143,7 +142,10 @@ fn expand_border_radius_shorthand(expanded: &mut Vec<(String, String)>, value: &
 /// Expand background shorthand (simplified)
 fn expand_background_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
     // This is a simplified version - full background parsing is complex
-    if value.contains("url(") || value.contains("linear-gradient") || value.contains("radial-gradient") {
+    if value.contains("url(")
+        || value.contains("linear-gradient")
+        || value.contains("radial-gradient")
+    {
         expanded.push(("background-image".to_string(), value.to_string()));
     } else if is_color_value(value) {
         expanded.push(("background-color".to_string(), value.to_string()));
@@ -157,10 +159,12 @@ fn expand_background_shorthand(expanded: &mut Vec<(String, String)>, value: &str
 fn expand_font_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
     // This is a simplified version
     let parts: Vec<&str> = value.split_whitespace().collect();
-    
+
     if parts.len() >= 2 {
         // Try to parse font-size/line-height font-family
-        if let Some(size_pos) = parts.iter().position(|p| p.contains("px") || p.contains("em") || p.contains("rem") || p.contains("%")) {
+        if let Some(size_pos) = parts.iter().position(|p| {
+            p.contains("px") || p.contains("em") || p.contains("rem") || p.contains("%")
+        }) {
             if size_pos < parts.len() - 1 {
                 expanded.push(("font-size".to_string(), parts[size_pos].to_string()));
                 let family = parts[(size_pos + 1)..].join(" ");
@@ -169,7 +173,7 @@ fn expand_font_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
             }
         }
     }
-    
+
     // Keep original for complex cases
     expanded.push(("font".to_string(), value.to_string()));
 }
@@ -177,7 +181,7 @@ fn expand_font_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
 /// Expand flex shorthand
 fn expand_flex_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
     let parts: Vec<&str> = value.split_whitespace().collect();
-    
+
     match parts.len() {
         1 => {
             if parts[0] == "none" {
@@ -248,7 +252,7 @@ fn expand_grid_template_shorthand(expanded: &mut Vec<(String, String)>, value: &
 /// Expand gap/grid-gap shorthand
 fn expand_gap_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
     let parts: Vec<&str> = value.split_whitespace().collect();
-    
+
     match parts.len() {
         1 => {
             expanded.push(("row-gap".to_string(), parts[0].to_string()));
@@ -267,7 +271,7 @@ fn expand_gap_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
 /// Expand place-items shorthand
 fn expand_place_items_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
     let parts: Vec<&str> = value.split_whitespace().collect();
-    
+
     match parts.len() {
         1 => {
             expanded.push(("align-items".to_string(), parts[0].to_string()));
@@ -286,7 +290,7 @@ fn expand_place_items_shorthand(expanded: &mut Vec<(String, String)>, value: &st
 /// Expand place-content shorthand
 fn expand_place_content_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
     let parts: Vec<&str> = value.split_whitespace().collect();
-    
+
     match parts.len() {
         1 => {
             expanded.push(("align-content".to_string(), parts[0].to_string()));
@@ -305,7 +309,7 @@ fn expand_place_content_shorthand(expanded: &mut Vec<(String, String)>, value: &
 /// Expand place-self shorthand
 fn expand_place_self_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
     let parts: Vec<&str> = value.split_whitespace().collect();
-    
+
     match parts.len() {
         1 => {
             expanded.push(("align-self".to_string(), parts[0].to_string()));
@@ -324,7 +328,7 @@ fn expand_place_self_shorthand(expanded: &mut Vec<(String, String)>, value: &str
 /// Expand overflow shorthand
 fn expand_overflow_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
     let parts: Vec<&str> = value.split_whitespace().collect();
-    
+
     match parts.len() {
         1 => {
             expanded.push(("overflow-x".to_string(), parts[0].to_string()));
@@ -369,31 +373,50 @@ fn expand_animation_shorthand(expanded: &mut Vec<(String, String)>, value: &str)
 // Helper functions
 
 fn is_border_width(value: &str) -> bool {
-    matches!(value, "thin" | "medium" | "thick") || 
-    value.ends_with("px") || 
-    value.ends_with("em") ||
-    value.ends_with("rem")
+    matches!(value, "thin" | "medium" | "thick")
+        || value.ends_with("px")
+        || value.ends_with("em")
+        || value.ends_with("rem")
 }
 
 fn is_border_style(value: &str) -> bool {
     matches!(
         value,
-        "none" | "hidden" | "dotted" | "dashed" | "solid" | 
-        "double" | "groove" | "ridge" | "inset" | "outset"
+        "none"
+            | "hidden"
+            | "dotted"
+            | "dashed"
+            | "solid"
+            | "double"
+            | "groove"
+            | "ridge"
+            | "inset"
+            | "outset"
     )
 }
 
 fn is_color_value(value: &str) -> bool {
-    value.starts_with('#') ||
-    value.starts_with("rgb") ||
-    value.starts_with("rgba") ||
-    value.starts_with("hsl") ||
-    value.starts_with("hsla") ||
-    matches!(
-        value,
-        "red" | "green" | "blue" | "white" | "black" | "gray" | "grey" |
-        "yellow" | "orange" | "purple" | "pink" | "transparent" | "currentcolor"
-    )
+    value.starts_with('#')
+        || value.starts_with("rgb")
+        || value.starts_with("rgba")
+        || value.starts_with("hsl")
+        || value.starts_with("hsla")
+        || matches!(
+            value,
+            "red"
+                | "green"
+                | "blue"
+                | "white"
+                | "black"
+                | "gray"
+                | "grey"
+                | "yellow"
+                | "orange"
+                | "purple"
+                | "pink"
+                | "transparent"
+                | "currentcolor"
+        )
 }
 
 fn extract_duration(value: &str) -> Option<String> {

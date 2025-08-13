@@ -26,9 +26,8 @@ impl PhpParser {
 
         let label = node.kind().to_string();
         let value = match node.kind() {
-            "name" | "variable_name" | "string" | "integer" | "float" | "true" | "false" | "null" => {
-                node.utf8_text(source.as_bytes()).unwrap_or("").to_string()
-            }
+            "name" | "variable_name" | "string" | "integer" | "float" | "true" | "false"
+            | "null" => node.utf8_text(source.as_bytes()).unwrap_or("").to_string(),
             _ => "".to_string(),
         };
 
@@ -50,7 +49,7 @@ impl PhpParser {
         namespace: Option<&str>,
     ) -> Vec<GenericFunctionDef> {
         let mut functions = Vec::new();
-        
+
         // Check if there's a namespace declaration at the root level
         let mut current_namespace: Option<String> = None;
         let mut cursor = node.walk();
@@ -137,8 +136,15 @@ impl PhpParser {
                                 decorators: vec![
                                     visibility,
                                     if is_static { "static".to_string() } else { "".to_string() },
-                                    if is_abstract { "abstract".to_string() } else { "".to_string() },
-                                ].into_iter().filter(|s| !s.is_empty()).collect(),
+                                    if is_abstract {
+                                        "abstract".to_string()
+                                    } else {
+                                        "".to_string()
+                                    },
+                                ]
+                                .into_iter()
+                                .filter(|s| !s.is_empty())
+                                .collect(),
                             });
                         }
                     }
@@ -259,10 +265,15 @@ impl PhpParser {
 }
 
 impl LanguageParser for PhpParser {
-    fn parse(&mut self, source: &str, _filename: &str) -> Result<Rc<TreeNode>, Box<dyn Error + Send + Sync>> {
-        let tree = self.parser.parse(source, None).ok_or_else(|| -> Box<dyn Error + Send + Sync> {
-            "Failed to parse PHP source".into()
-        })?;
+    fn parse(
+        &mut self,
+        source: &str,
+        _filename: &str,
+    ) -> Result<Rc<TreeNode>, Box<dyn Error + Send + Sync>> {
+        let tree =
+            self.parser.parse(source, None).ok_or_else(|| -> Box<dyn Error + Send + Sync> {
+                "Failed to parse PHP source".into()
+            })?;
 
         let root_node = tree.root_node();
         let mut id_counter = 0;
@@ -274,9 +285,10 @@ impl LanguageParser for PhpParser {
         source: &str,
         _filename: &str,
     ) -> Result<Vec<GenericFunctionDef>, Box<dyn Error + Send + Sync>> {
-        let tree = self.parser.parse(source, None).ok_or_else(|| -> Box<dyn Error + Send + Sync> {
-            "Failed to parse PHP source".into()
-        })?;
+        let tree =
+            self.parser.parse(source, None).ok_or_else(|| -> Box<dyn Error + Send + Sync> {
+                "Failed to parse PHP source".into()
+            })?;
 
         let root_node = tree.root_node();
         Ok(self.extract_functions_from_node(root_node, source, None, None))
@@ -287,9 +299,10 @@ impl LanguageParser for PhpParser {
         source: &str,
         _filename: &str,
     ) -> Result<Vec<GenericTypeDef>, Box<dyn Error + Send + Sync>> {
-        let tree = self.parser.parse(source, None).ok_or_else(|| -> Box<dyn Error + Send + Sync> {
-            "Failed to parse PHP source".into()
-        })?;
+        let tree =
+            self.parser.parse(source, None).ok_or_else(|| -> Box<dyn Error + Send + Sync> {
+                "Failed to parse PHP source".into()
+            })?;
 
         let root_node = tree.root_node();
         let mut types = Vec::new();
@@ -448,7 +461,7 @@ class Calculator {
 
         let functions = parser.extract_functions(source, "test.php").unwrap();
         assert!(functions.len() >= 4);
-        
+
         let function_names: Vec<&str> = functions.iter().map(|f| f.name.as_str()).collect();
         assert!(function_names.contains(&"hello"));
         assert!(function_names.contains(&"add"));
@@ -513,7 +526,7 @@ class UserController {
 
         let functions = parser.extract_functions(source, "test.php").unwrap();
         assert!(functions.len() >= 2);
-        
+
         let function_names: Vec<&str> = functions.iter().map(|f| f.name.as_str()).collect();
         assert!(function_names.contains(&"App\\Controllers\\processRequest"));
         assert!(function_names.contains(&"UserController::index"));
@@ -541,16 +554,16 @@ function standalone_function() {
 
         let functions = parser.extract_functions(source, "test.php").unwrap();
         assert_eq!(functions.len(), 3);
-        
+
         // Check class methods have class_name set
         let method1 = functions.iter().find(|f| f.name.contains("method1")).unwrap();
         let method2 = functions.iter().find(|f| f.name.contains("method2")).unwrap();
         let standalone = functions.iter().find(|f| f.name == "standalone_function").unwrap();
-        
+
         assert_eq!(method1.class_name, Some("TestClass".to_string()));
         assert_eq!(method2.class_name, Some("TestClass".to_string()));
         assert_eq!(standalone.class_name, None);
-        
+
         assert!(method1.is_method);
         assert!(method2.is_method);
         assert!(!standalone.is_method);

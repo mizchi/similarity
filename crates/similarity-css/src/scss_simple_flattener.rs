@@ -9,28 +9,29 @@ pub struct SimpleFlatRule {
     pub end_line: u32,
 }
 
-
 /// Simple regex-based SCSS flattener
-pub fn simple_flatten_scss(content: &str) -> Result<Vec<SimpleFlatRule>, Box<dyn Error + Send + Sync>> {
+pub fn simple_flatten_scss(
+    content: &str,
+) -> Result<Vec<SimpleFlatRule>, Box<dyn Error + Send + Sync>> {
     let mut rules = Vec::new();
     let mut selector_stack: Vec<Vec<String>> = Vec::new();
     let mut in_rule = false;
     let mut current_declarations = Vec::new();
     let mut rule_start_line = 0;
     let mut pending_selector = String::new();
-    
+
     for (line_num, line) in content.lines().enumerate() {
         let line_num = line_num as u32 + 1;
         let trimmed = line.trim();
-        
+
         if trimmed.is_empty() || trimmed.starts_with("//") {
             continue;
         }
-        
+
         // Count braces
         let open_braces = line.chars().filter(|&c| c == '{').count();
         let close_braces = line.chars().filter(|&c| c == '}').count();
-        
+
         // Check if we're collecting a multi-line selector
         if trimmed.ends_with(",") && open_braces == 0 {
             // This line continues on the next line
@@ -38,7 +39,7 @@ pub fn simple_flatten_scss(content: &str) -> Result<Vec<SimpleFlatRule>, Box<dyn
             pending_selector.push(' ');
             continue;
         }
-        
+
         // Detect selector
         if open_braces > 0 && !trimmed.starts_with("@if") && !trimmed.starts_with("@else") {
             let selector_part = if !pending_selector.is_empty() {
@@ -50,7 +51,7 @@ pub fn simple_flatten_scss(content: &str) -> Result<Vec<SimpleFlatRule>, Box<dyn
             } else {
                 line.split('{').next().unwrap_or("").trim().to_string()
             };
-            
+
             if !selector_part.is_empty() {
                 // Save any pending rule
                 if !current_declarations.is_empty() && !selector_stack.is_empty() {
@@ -67,11 +68,11 @@ pub fn simple_flatten_scss(content: &str) -> Result<Vec<SimpleFlatRule>, Box<dyn
                         }
                     }
                 }
-                
+
                 // Parse the new selector(s)
                 let selectors: Vec<&str> = selector_part.split(',').map(|s| s.trim()).collect();
                 let mut expanded_selectors = Vec::new();
-                
+
                 for selector in selectors {
                     if selector.starts_with('&') {
                         // Nested selector with parent reference
@@ -101,21 +102,20 @@ pub fn simple_flatten_scss(content: &str) -> Result<Vec<SimpleFlatRule>, Box<dyn
                         }
                     }
                 }
-                
+
                 selector_stack.push(expanded_selectors);
                 in_rule = true;
                 rule_start_line = line_num;
                 current_declarations.clear();
             }
         }
-        
+
         // Parse declarations (handle single-line rules)
         if open_braces > 0 && close_braces > 0 {
             // Single-line rule like: .m-0 { margin: 0; }
-            let content_between = line.split('{').nth(1)
-                .and_then(|s| s.split('}').next())
-                .unwrap_or("");
-            
+            let content_between =
+                line.split('{').nth(1).and_then(|s| s.split('}').next()).unwrap_or("");
+
             for declaration in content_between.split(';') {
                 let declaration = declaration.trim();
                 if declaration.contains(':') {
@@ -140,7 +140,7 @@ pub fn simple_flatten_scss(content: &str) -> Result<Vec<SimpleFlatRule>, Box<dyn
                 }
             }
         }
-        
+
         // Close rule
         if close_braces > 0 {
             for _ in 0..close_braces {
@@ -158,20 +158,20 @@ pub fn simple_flatten_scss(content: &str) -> Result<Vec<SimpleFlatRule>, Box<dyn
                         }
                     }
                 }
-                
+
                 if !selector_stack.is_empty() {
                     selector_stack.pop();
                 }
                 current_declarations.clear();
                 in_rule = !selector_stack.is_empty();
-                
+
                 if !selector_stack.is_empty() {
                     rule_start_line = line_num + 1;
                 }
             }
         }
     }
-    
+
     Ok(rules)
 }
 
@@ -182,7 +182,10 @@ fn process_ampersand_selector(parent: &str, selector: &str) -> String {
     } else if selector.starts_with("&.") {
         // Additional class
         format!("{}{}", parent, &selector[1..])
-    } else if selector.starts_with("&__") || selector.starts_with("&--") || selector.starts_with("&-") {
+    } else if selector.starts_with("&__")
+        || selector.starts_with("&--")
+        || selector.starts_with("&-")
+    {
         // BEM notation
         format!("{}{}", parent, &selector[1..])
     } else if selector.starts_with("&[") {
@@ -200,7 +203,7 @@ fn process_ampersand_selector(parent: &str, selector: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_simple_scss_flattening() {
         let scss = r#"
@@ -217,9 +220,9 @@ mod tests {
         font-size: 14px;
     }
 }"#;
-        
+
         let rules = simple_flatten_scss(scss).unwrap();
-        
+
         println!("Found {} rules:", rules.len());
         for rule in &rules {
             println!("  - {} ({} declarations)", rule.selector, rule.declarations.len());
@@ -227,13 +230,13 @@ mod tests {
                 println!("    {prop}: {val}");
             }
         }
-        
+
         assert_eq!(rules.len(), 3);
         assert!(rules.iter().any(|r| r.selector == ".card"));
         assert!(rules.iter().any(|r| r.selector == ".card__header"));
         assert!(rules.iter().any(|r| r.selector == ".card__body"));
     }
-    
+
     #[test]
     fn test_deep_nesting() {
         let scss = r#"
@@ -256,16 +259,16 @@ mod tests {
         }
     }
 }"#;
-        
+
         let rules = simple_flatten_scss(scss).unwrap();
-        
+
         assert!(rules.iter().any(|r| r.selector == ".nav"));
         assert!(rules.iter().any(|r| r.selector == ".nav ul"));
         assert!(rules.iter().any(|r| r.selector == ".nav ul li"));
         assert!(rules.iter().any(|r| r.selector == ".nav ul li a"));
         assert!(rules.iter().any(|r| r.selector == ".nav ul li a:hover"));
     }
-    
+
     #[test]
     fn test_multiple_selectors() {
         let scss = r#"
@@ -278,9 +281,9 @@ mod tests {
         font-family: inherit;
     }
 }"#;
-        
+
         let rules = simple_flatten_scss(scss).unwrap();
-        
+
         println!("Multiple selector test - Found {} rules:", rules.len());
         for rule in &rules {
             println!("  - {} ({} decls)", rule.selector, rule.declarations.len());
@@ -288,13 +291,13 @@ mod tests {
                 println!("    {k}: {v}");
             }
         }
-        
+
         assert!(rules.iter().any(|r| r.selector == ".form-control"));
         assert!(rules.iter().any(|r| r.selector == ".form-control[type=\"text\"]"));
         assert!(rules.iter().any(|r| r.selector == ".form-control[type=\"email\"]"));
         assert!(rules.iter().any(|r| r.selector == ".form-control[type=\"password\"]"));
     }
-    
+
     #[test]
     fn test_bem_notation() {
         let scss = r#"
@@ -313,20 +316,20 @@ mod tests {
         display: inline-block;
     }
 }"#;
-        
+
         let rules = simple_flatten_scss(scss).unwrap();
-        
+
         println!("BEM notation test - Found {} rules:", rules.len());
         for rule in &rules {
             println!("  - {}", rule.selector);
         }
-        
+
         assert!(rules.iter().any(|r| r.selector == ".form"));
         assert!(rules.iter().any(|r| r.selector == ".form-group"));
         assert!(rules.iter().any(|r| r.selector == ".form__label"));
         assert!(rules.iter().any(|r| r.selector == ".form--inline"));
     }
-    
+
     #[test]
     fn test_complex_multi_selectors() {
         let scss = r#"
@@ -349,29 +352,29 @@ mod tests {
         }
     }
 }"#;
-        
+
         let rules = simple_flatten_scss(scss).unwrap();
-        
+
         println!("Complex multi-selector test - Found {} rules:", rules.len());
         for rule in &rules {
             println!("  - {}", rule.selector);
         }
-        
+
         // Should have base selectors
         assert!(rules.iter().any(|r| r.selector == ".form-group input"));
         assert!(rules.iter().any(|r| r.selector == ".form-group textarea"));
         assert!(rules.iter().any(|r| r.selector == ".form-group select"));
-        
+
         // Should have :focus variants
         assert!(rules.iter().any(|r| r.selector == ".form-group input:focus"));
         assert!(rules.iter().any(|r| r.selector == ".form-group textarea:focus"));
         assert!(rules.iter().any(|r| r.selector == ".form-group select:focus"));
-        
+
         // Should have .error variants
         assert!(rules.iter().any(|r| r.selector == ".form-group input.error"));
         assert!(rules.iter().any(|r| r.selector == ".form-group textarea.error"));
         assert!(rules.iter().any(|r| r.selector == ".form-group select.error"));
-        
+
         // Should have .error:focus variants
         assert!(rules.iter().any(|r| r.selector == ".form-group input.error:focus"));
         assert!(rules.iter().any(|r| r.selector == ".form-group textarea.error:focus"));

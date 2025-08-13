@@ -13,35 +13,35 @@ fn test_complex_shorthand_expansion() {
         ("place-items".to_string(), "center start".to_string()),
         ("overflow".to_string(), "scroll".to_string()),
     ];
-    
+
     let expanded = expand_shorthand_properties(&declarations);
-    
+
     // Verify expansion happened
     assert!(expanded.len() > declarations.len());
-    
+
     // Check margin expansion
     assert!(expanded.iter().any(|(k, v)| k == "margin-top" && v == "10px"));
     assert!(expanded.iter().any(|(k, v)| k == "margin-right" && v == "20px"));
     assert!(expanded.iter().any(|(k, v)| k == "margin-bottom" && v == "30px"));
     assert!(expanded.iter().any(|(k, v)| k == "margin-left" && v == "40px"));
-    
+
     // Check padding expansion
     assert!(expanded.iter().any(|(k, v)| k == "padding-top" && v == "5px"));
     assert!(expanded.iter().any(|(k, v)| k == "padding-right" && v == "10px"));
-    
+
     // Check flex expansion
     assert!(expanded.iter().any(|(k, v)| k == "flex-grow" && v == "2"));
     assert!(expanded.iter().any(|(k, v)| k == "flex-shrink" && v == "1"));
     assert!(expanded.iter().any(|(k, v)| k == "flex-basis" && v == "auto"));
-    
+
     // Check gap expansion
     assert!(expanded.iter().any(|(k, v)| k == "row-gap" && v == "20px"));
     assert!(expanded.iter().any(|(k, v)| k == "column-gap" && v == "30px"));
-    
+
     // Check place-items expansion
     assert!(expanded.iter().any(|(k, v)| k == "align-items" && v == "center"));
     assert!(expanded.iter().any(|(k, v)| k == "justify-items" && v == "start"));
-    
+
     // Check overflow expansion
     assert!(expanded.iter().any(|(k, v)| k == "overflow-x" && v == "scroll"));
     assert!(expanded.iter().any(|(k, v)| k == "overflow-y" && v == "scroll"));
@@ -56,18 +56,18 @@ fn test_edge_cases() {
         ("border".to_string(), "none".to_string()),
         ("overflow".to_string(), "visible hidden".to_string()),
     ];
-    
+
     let expanded = expand_shorthand_properties(&declarations);
-    
+
     // margin: auto should expand to all sides
     assert!(expanded.iter().any(|(k, v)| k == "margin-top" && v == "auto"));
     assert!(expanded.iter().any(|(k, v)| k == "margin-right" && v == "auto"));
-    
+
     // flex: none should expand correctly
     assert!(expanded.iter().any(|(k, v)| k == "flex-grow" && v == "0"));
     assert!(expanded.iter().any(|(k, v)| k == "flex-shrink" && v == "0"));
     assert!(expanded.iter().any(|(k, v)| k == "flex-basis" && v == "auto"));
-    
+
     // overflow with different x/y values
     assert!(expanded.iter().any(|(k, v)| k == "overflow-x" && v == "visible"));
     assert!(expanded.iter().any(|(k, v)| k == "overflow-y" && v == "hidden"));
@@ -81,15 +81,15 @@ fn test_invalid_shorthand_handling() {
         ("flex".to_string(), "invalid value here".to_string()),
         ("unknown-property".to_string(), "some value".to_string()),
     ];
-    
+
     let expanded = expand_shorthand_properties(&declarations);
-    
+
     // Invalid margin should be kept as-is
     assert!(expanded.iter().any(|(k, v)| k == "margin" && v.contains("50px")));
-    
+
     // Invalid flex should be kept as-is
     assert!(expanded.iter().any(|(k, v)| k == "flex" && v.contains("invalid")));
-    
+
     // Unknown property should pass through
     assert!(expanded.iter().any(|(k, _v)| k == "unknown-property"));
 }
@@ -103,19 +103,15 @@ fn test_mixed_shorthand_and_longhand() {
         ("padding-left".to_string(), "5px".to_string()),
         ("padding".to_string(), "15px".to_string()), // This expands but doesn't override existing
     ];
-    
+
     let expanded = expand_shorthand_properties(&declarations);
-    
+
     // Should have both the expanded margin and the specific margin-top
-    let margin_tops: Vec<_> = expanded.iter()
-        .filter(|(k, _)| k == "margin-top")
-        .collect();
+    let margin_tops: Vec<_> = expanded.iter().filter(|(k, _)| k == "margin-top").collect();
     assert_eq!(margin_tops.len(), 2); // One from expansion, one explicit
-    
+
     // Should have both padding-left values
-    let padding_lefts: Vec<_> = expanded.iter()
-        .filter(|(k, _)| k == "padding-left")
-        .collect();
+    let padding_lefts: Vec<_> = expanded.iter().filter(|(k, _)| k == "padding-left").collect();
     assert_eq!(padding_lefts.len(), 2);
 }
 
@@ -126,15 +122,15 @@ fn test_color_normalization() {
         ("background".to_string(), "#000000".to_string()),
         ("color".to_string(), "rgb(255, 0, 0)".to_string()),
     ];
-    
+
     let expanded = expand_shorthand_properties(&declarations);
-    
+
     // Border should expand with color preserved
     assert!(expanded.iter().any(|(k, v)| k == "border-top-color" && v == "black"));
-    
+
     // Background color detection
     assert!(expanded.iter().any(|(k, v)| k == "background-color" && v == "#000000"));
-    
+
     // Non-shorthand color should pass through
     assert!(expanded.iter().any(|(k, v)| k == "color" && v.contains("rgb")));
 }

@@ -1,6 +1,6 @@
-use crate::{CssRule, SerializableCssRule, calculate_rule_similarity, SelectorAnalysis};
-use std::collections::HashMap;
+use crate::{calculate_rule_similarity, CssRule, SelectorAnalysis, SerializableCssRule};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Represents a potential duplicate CSS rule
 #[derive(Debug, Clone)]
@@ -55,7 +55,7 @@ impl DuplicateAnalyzer {
     pub fn new(rules: Vec<CssRule>, threshold: f64) -> Self {
         Self { rules, threshold }
     }
-    
+
     /// Find all types of duplicates in the ruleset
     pub fn analyze(&self) -> DuplicateAnalysisResult {
         let mut exact_duplicates = Vec::new();
@@ -63,18 +63,18 @@ impl DuplicateAnalyzer {
         let mut style_duplicates = Vec::new();
         let mut bem_variations = Vec::new();
         let mut specificity_overrides = Vec::new();
-        
+
         // Compare all pairs of rules
         for (i, rule1) in self.rules.iter().enumerate() {
             for (j, rule2) in self.rules.iter().enumerate() {
                 if i >= j {
                     continue;
                 }
-                
+
                 let similarity = calculate_rule_similarity(rule1, rule2);
                 let sel_analysis1 = SelectorAnalysis::new(&rule1.selector);
                 let sel_analysis2 = SelectorAnalysis::new(&rule2.selector);
-                
+
                 // Check for exact duplicates
                 if rule1.selector == rule2.selector && similarity > 0.99 {
                     exact_duplicates.push(DuplicateRule {
@@ -106,9 +106,11 @@ impl DuplicateAnalyzer {
                             selector2: rule2.selector.clone(),
                         },
                     });
-                    
+
                     // Check if they're BEM variations
-                    if let (Some(bem1), Some(bem2)) = (&sel_analysis1.bem_parts, &sel_analysis2.bem_parts) {
+                    if let (Some(bem1), Some(bem2)) =
+                        (&sel_analysis1.bem_parts, &sel_analysis2.bem_parts)
+                    {
                         if bem1.block == bem2.block {
                             bem_variations.push(DuplicateRule {
                                 rule1: rule1.clone(),
@@ -121,15 +123,17 @@ impl DuplicateAnalyzer {
                         }
                     }
                 }
-                
+
                 // Check for specificity overrides
-                if sel_analysis1.overrides(&sel_analysis2) || sel_analysis2.overrides(&sel_analysis1) {
+                if sel_analysis1.overrides(&sel_analysis2)
+                    || sel_analysis2.overrides(&sel_analysis1)
+                {
                     let (winner, loser) = if sel_analysis1.overrides(&sel_analysis2) {
                         (&rule1.selector, &rule2.selector)
                     } else {
                         (&rule2.selector, &rule1.selector)
                     };
-                    
+
                     specificity_overrides.push(DuplicateRule {
                         rule1: rule1.clone(),
                         rule2: rule2.clone(),
@@ -142,9 +146,10 @@ impl DuplicateAnalyzer {
                 }
             }
         }
-        
-        let summary = self.generate_summary(&exact_duplicates, &selector_conflicts, &style_duplicates);
-        
+
+        let summary =
+            self.generate_summary(&exact_duplicates, &selector_conflicts, &style_duplicates);
+
         DuplicateAnalysisResult {
             exact_duplicates,
             selector_conflicts,
@@ -154,7 +159,7 @@ impl DuplicateAnalyzer {
             summary,
         }
     }
-    
+
     /// Generate a summary of the analysis
     fn generate_summary(
         &self,
@@ -166,12 +171,10 @@ impl DuplicateAnalyzer {
         for rule in &self.rules {
             *selector_usage.entry(rule.selector.clone()).or_insert(0) += 1;
         }
-        
-        let repeated_selectors: Vec<(String, usize)> = selector_usage
-            .into_iter()
-            .filter(|(_, count)| *count > 1)
-            .collect();
-        
+
+        let repeated_selectors: Vec<(String, usize)> =
+            selector_usage.into_iter().filter(|(_, count)| *count > 1).collect();
+
         DuplicateSummary {
             total_rules: self.rules.len(),
             exact_duplicate_count: exact_duplicates.len(),
@@ -180,36 +183,37 @@ impl DuplicateAnalyzer {
             repeated_selectors,
         }
     }
-    
+
     /// Get recommendations for fixing duplicates
     pub fn get_recommendations(&self, result: &DuplicateAnalysisResult) -> Vec<String> {
         let mut recommendations = Vec::new();
-        
+
         // Exact duplicates
         if !result.exact_duplicates.is_empty() {
             recommendations.push(format!(
                 "Found {} exact duplicate rules that can be safely removed",
                 result.exact_duplicates.len()
             ));
-            
+
             for dup in &result.exact_duplicates {
                 recommendations.push(format!(
                     "  - Remove duplicate '{}' at line {}",
-                    dup.rule2.selector,
-                    dup.rule2.start_line
+                    dup.rule2.selector, dup.rule2.start_line
                 ));
             }
         }
-        
+
         // Selector conflicts
         if !result.selector_conflicts.is_empty() {
             recommendations.push(format!(
                 "\nFound {} selector conflicts that need manual review",
                 result.selector_conflicts.len()
             ));
-            
+
             for conflict in &result.selector_conflicts {
-                if let DuplicateType::SelectorConflict { declaration_similarity } = &conflict.duplicate_type {
+                if let DuplicateType::SelectorConflict { declaration_similarity } =
+                    &conflict.duplicate_type
+                {
                     recommendations.push(format!(
                         "  - Selector '{}' appears at lines {} and {} with {:.0}% similar styles",
                         conflict.rule1.selector,
@@ -220,16 +224,17 @@ impl DuplicateAnalyzer {
                 }
             }
         }
-        
+
         // Style duplicates
         if !result.style_duplicates.is_empty() {
             recommendations.push(format!(
                 "\nFound {} style duplicates that could be consolidated",
                 result.style_duplicates.len()
             ));
-            
+
             for dup in result.style_duplicates.iter().take(5) {
-                if let DuplicateType::StyleDuplicate { selector1, selector2 } = &dup.duplicate_type {
+                if let DuplicateType::StyleDuplicate { selector1, selector2 } = &dup.duplicate_type
+                {
                     recommendations.push(format!(
                         "  - '{}' and '{}' have {:.0}% similar styles",
                         selector1,
@@ -238,7 +243,7 @@ impl DuplicateAnalyzer {
                     ));
                 }
             }
-            
+
             if result.style_duplicates.len() > 5 {
                 recommendations.push(format!(
                     "  ... and {} more style duplicates",
@@ -246,7 +251,7 @@ impl DuplicateAnalyzer {
                 ));
             }
         }
-        
+
         // BEM recommendations
         if !result.bem_variations.is_empty() {
             let mut bem_components: HashMap<String, usize> = HashMap::new();
@@ -255,7 +260,7 @@ impl DuplicateAnalyzer {
                     *bem_components.entry(component.clone()).or_insert(0) += 1;
                 }
             }
-            
+
             recommendations.push("\nBEM component analysis:".to_string());
             for (component, count) in bem_components {
                 recommendations.push(format!(
@@ -263,7 +268,7 @@ impl DuplicateAnalyzer {
                 ));
             }
         }
-        
+
         recommendations
     }
 }
@@ -291,14 +296,15 @@ pub struct DuplicateSummary {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     fn create_test_rule(selector: &str, declarations: Vec<(&str, &str)>, line: usize) -> CssRule {
         use similarity_core::tree::TreeNode;
         use std::rc::Rc;
-        
+
         CssRule {
             selector: selector.to_string(),
-            declarations: declarations.iter()
+            declarations: declarations
+                .iter()
                 .map(|(k, v)| (k.to_string(), v.to_string()))
                 .collect(),
             tree: Rc::new(TreeNode::new(selector.to_string(), String::new(), 0)),
@@ -306,7 +312,7 @@ mod tests {
             end_line: line + declarations.len(),
         }
     }
-    
+
     #[test]
     fn test_exact_duplicate_detection() {
         let rules = vec![
@@ -314,14 +320,14 @@ mod tests {
             create_test_rule(".btn", vec![("color", "blue"), ("padding", "10px")], 5),
             create_test_rule(".btn-primary", vec![("color", "white")], 10),
         ];
-        
+
         let analyzer = DuplicateAnalyzer::new(rules, 0.8);
         let result = analyzer.analyze();
-        
+
         assert_eq!(result.exact_duplicates.len(), 1);
         assert_eq!(result.exact_duplicates[0].duplicate_type, DuplicateType::ExactDuplicate);
     }
-    
+
     #[test]
     fn test_style_duplicate_detection() {
         let rules = vec![
@@ -329,22 +335,22 @@ mod tests {
             create_test_rule(".panel", vec![("padding", "20px"), ("background", "white")], 5),
             create_test_rule(".box", vec![("margin", "10px")], 10),
         ];
-        
+
         let analyzer = DuplicateAnalyzer::new(rules, 0.5);
         let result = analyzer.analyze();
-        
+
         assert_eq!(result.style_duplicates.len(), 1);
         match &result.style_duplicates[0].duplicate_type {
             DuplicateType::StyleDuplicate { selector1, selector2 } => {
                 assert!(
-                    (selector1 == ".card" && selector2 == ".panel") ||
-                    (selector1 == ".panel" && selector2 == ".card")
+                    (selector1 == ".card" && selector2 == ".panel")
+                        || (selector1 == ".panel" && selector2 == ".card")
                 );
             }
             _ => panic!("Expected StyleDuplicate"),
         }
     }
-    
+
     #[test]
     fn test_recommendations() {
         let rules = vec![
@@ -352,11 +358,11 @@ mod tests {
             create_test_rule(".btn", vec![("color", "blue")], 5),
             create_test_rule(".btn", vec![("color", "red")], 10),
         ];
-        
+
         let analyzer = DuplicateAnalyzer::new(rules, 0.8);
         let result = analyzer.analyze();
         let recommendations = analyzer.get_recommendations(&result);
-        
+
         assert!(!recommendations.is_empty());
         assert!(recommendations[0].contains("exact duplicate"));
     }

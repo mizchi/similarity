@@ -1,7 +1,7 @@
-use similarity_css::{
-    CssParser, DuplicateAnalyzer, DuplicateType, calculate_specificity, convert_to_css_rule,
-};
 use similarity_core::language_parser::LanguageParser;
+use similarity_css::{
+    calculate_specificity, convert_to_css_rule, CssParser, DuplicateAnalyzer, DuplicateType,
+};
 
 #[test]
 fn test_full_duplicate_analysis_workflow() {
@@ -95,44 +95,45 @@ fn test_full_duplicate_analysis_workflow() {
     // Parse CSS
     let mut parser = CssParser::new_scss();
     let functions = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
+
     // Convert to CssRule format with proper tree nodes
-    let css_rules: Vec<_> = functions.iter()
-        .map(|func| convert_to_css_rule(func, scss_content))
-        .collect();
-    
+    let css_rules: Vec<_> =
+        functions.iter().map(|func| convert_to_css_rule(func, scss_content)).collect();
+
     // Analyze duplicates
     let analyzer = DuplicateAnalyzer::new(css_rules, 0.8);
     let result = analyzer.analyze();
-    
+
     // Test exact duplicates
     assert!(!result.exact_duplicates.is_empty(), "Should find exact duplicate .nav rules");
-    let nav_duplicate = result.exact_duplicates.iter()
+    let nav_duplicate = result
+        .exact_duplicates
+        .iter()
         .find(|d| d.rule1.selector == ".nav")
         .expect("Should find .nav duplicate");
     assert_eq!(nav_duplicate.duplicate_type, DuplicateType::ExactDuplicate);
-    
+
     // Test style duplicates
     assert!(!result.style_duplicates.is_empty(), "Should find style duplicates");
-    
+
     // Check for nav/menu similarity
-    let nav_menu_similar = result.style_duplicates.iter()
-        .find(|d| {
-            (d.rule1.selector == ".nav" && d.rule2.selector == ".menu") ||
-            (d.rule1.selector == ".menu" && d.rule2.selector == ".nav")
-        });
+    let nav_menu_similar = result.style_duplicates.iter().find(|d| {
+        (d.rule1.selector == ".nav" && d.rule2.selector == ".menu")
+            || (d.rule1.selector == ".menu" && d.rule2.selector == ".nav")
+    });
     assert!(nav_menu_similar.is_some(), "Should detect nav/menu similarity");
-    
+
     // Check for card/panel similarity
-    let card_panel_similar = result.style_duplicates.iter()
-        .find(|d| {
-            (d.rule1.selector == ".card" && d.rule2.selector == ".panel") ||
-            (d.rule1.selector == ".panel" && d.rule2.selector == ".card")
-        });
+    let card_panel_similar = result.style_duplicates.iter().find(|d| {
+        (d.rule1.selector == ".card" && d.rule2.selector == ".panel")
+            || (d.rule1.selector == ".panel" && d.rule2.selector == ".card")
+    });
     assert!(card_panel_similar.is_some(), "Should detect card/panel similarity");
-    
+
     // Test BEM variations
-    let nav_bem_variations = result.bem_variations.iter()
+    let nav_bem_variations = result
+        .bem_variations
+        .iter()
         .filter(|v| {
             if let DuplicateType::BemVariation { component } = &v.duplicate_type {
                 component == "nav"
@@ -142,11 +143,11 @@ fn test_full_duplicate_analysis_workflow() {
         })
         .count();
     assert!(nav_bem_variations > 0, "Should detect nav BEM variations");
-    
+
     // Get recommendations
     let recommendations = analyzer.get_recommendations(&result);
     assert!(!recommendations.is_empty(), "Should provide recommendations");
-    
+
     // Verify recommendations mention duplicates
     let recs_text = recommendations.join("\n");
     assert!(recs_text.contains("exact duplicate"), "Should mention exact duplicates");
@@ -197,7 +198,7 @@ fn test_specificity_based_override_detection() {
 
     let mut parser = CssParser::new_scss();
     let functions = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
+
     // Test specificity calculations
     let selectors_and_expected = vec![
         (".btn", (0, 1, 0)),
@@ -208,7 +209,7 @@ fn test_specificity_based_override_detection() {
         (".btn:hover", (0, 2, 0)),
         (".btn[disabled]", (0, 2, 0)),
     ];
-    
+
     for (selector, expected) in selectors_and_expected {
         let spec = calculate_specificity(selector);
         assert_eq!(
@@ -217,27 +218,25 @@ fn test_specificity_based_override_detection() {
             "Specificity for '{selector}' should be {expected:?}"
         );
     }
-    
+
     // Create rules for override analysis
-    let css_rules: Vec<_> = functions.iter()
-        .map(|func| convert_to_css_rule(func, scss_content))
-        .collect();
-    
+    let css_rules: Vec<_> =
+        functions.iter().map(|func| convert_to_css_rule(func, scss_content)).collect();
+
     let analyzer = DuplicateAnalyzer::new(css_rules, 0.8);
     let result = analyzer.analyze();
-    
+
     // Should detect specificity overrides
     assert!(!result.specificity_overrides.is_empty(), "Should detect specificity overrides");
-    
+
     // ID selector should override class selectors
-    let id_override = result.specificity_overrides.iter()
-        .find(|o| {
-            if let DuplicateType::SpecificityOverride { winner, .. } = &o.duplicate_type {
-                winner == "#special-btn"
-            } else {
-                false
-            }
-        });
+    let id_override = result.specificity_overrides.iter().find(|o| {
+        if let DuplicateType::SpecificityOverride { winner, .. } = &o.duplicate_type {
+            winner == "#special-btn"
+        } else {
+            false
+        }
+    });
     assert!(id_override.is_some(), "ID selector should be detected as override winner");
 }
 
@@ -288,19 +287,16 @@ fn test_scss_nested_bem_analysis() {
 
     let mut parser = CssParser::new_scss();
     let functions = parser.extract_functions(scss_content, "test.scss").unwrap();
-    
+
     // Should parse nested SCSS and find duplicates
-    let header_rules = functions.iter()
-        .filter(|f| f.name.starts_with(".header"))
-        .count();
-    
+    let header_rules = functions.iter().filter(|f| f.name.starts_with(".header")).count();
+
     assert!(header_rules >= 2, "Should find multiple header-related rules");
-    
+
     // Check that nested selectors are properly generated
     let has_logo = functions.iter().any(|f| f.name.contains("header__logo"));
     let has_nav = functions.iter().any(|f| f.name.contains("header__nav"));
     let has_sticky = functions.iter().any(|f| f.name.contains("header--sticky"));
-    
-    assert!(has_logo || has_nav || has_sticky, 
-            "Should parse at least some nested BEM selectors");
+
+    assert!(has_logo || has_nav || has_sticky, "Should parse at least some nested BEM selectors");
 }
