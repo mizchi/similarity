@@ -1,6 +1,6 @@
 [package]
 name = "similarity-php"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2021"
 license = "MIT"
 description = "CLI tool for detecting code duplication in PHP projects"
@@ -19,7 +19,7 @@ path = "src/main.rs"
 name = "similarity_php"
 
 [dependencies]
-similarity-core = { version = "0.3.1", path = "../core" }
+similarity-core = { version = "0.4.0", path = "../core" }
 clap = { version = "4.0", features = ["derive"] }
 anyhow = "1.0"
 walkdir = "2.5"
