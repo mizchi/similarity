@@ -26,9 +26,29 @@ struct Cli {
     #[arg(long = "no-functions")]
     no_functions: bool,
 
-    /// Enable type similarity checking (experimental)
-    #[arg(long = "experimental-types")]
+    /// Enable type similarity checking
+    #[arg(long = "types", default_value = "true")]
     types: bool,
+    
+    /// Disable type similarity checking
+    #[arg(long = "no-types", conflicts_with = "types")]
+    no_types: bool,
+
+    /// Enable class similarity checking
+    #[arg(long = "classes", default_value = "false")]
+    classes: bool,
+    
+    /// Only check classes (exclude functions and types)
+    #[arg(long)]
+    classes_only: bool,
+    
+    /// Include classes with inheritance (extends) - excluded by default
+    #[arg(long)]
+    include_inheritance: bool,
+    
+    /// Include classes with interface implementation (implements) - excluded by default
+    #[arg(long)]
+    include_implements: bool,
 
     /// File extensions to check
     #[arg(short, long, value_delimiter = ',')]
@@ -118,13 +138,14 @@ struct Cli {
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    let functions_enabled = !cli.no_functions;
-    let types_enabled = cli.types;
+    let functions_enabled = !cli.no_functions && !cli.classes_only;
+    let types_enabled = (cli.types && !cli.no_types) && !cli.classes_only;
+    let classes_enabled = cli.classes || cli.classes_only;
     let overlap_enabled = cli.overlap;
 
     // Validate that at least one analyzer is enabled
-    if !functions_enabled && !types_enabled && !overlap_enabled {
-        eprintln!("Error: At least one analyzer must be enabled. Use --types to enable type checking, --overlap for overlap detection, or remove --no-functions.");
+    if !functions_enabled && !types_enabled && !classes_enabled && !overlap_enabled {
+        eprintln!("Error: At least one analyzer must be enabled. Remove --no-types to enable type checking, use --classes for class checking, use --overlap for overlap detection, or remove --no-functions.");
         return Err(anyhow::anyhow!("No analyzer enabled"));
     }
 
@@ -189,8 +210,27 @@ fn main() -> anyhow::Result<()> {
         total_duplicates += type_duplicate_count;
     }
 
+    // Run class analysis if enabled
+    if classes_enabled && (functions_enabled || types_enabled) {
+        println!("\n{}\n", separator);
+    }
+
+    if classes_enabled {
+        println!("=== Class Similarity ===");
+        let class_duplicate_count = check_classes(
+            cli.paths.clone(),
+            cli.threshold,
+            cli.extensions.as_ref(),
+            cli.print,
+            !cli.include_inheritance,
+            !cli.include_implements,
+            &cli.exclude,
+        )?;
+        total_duplicates += class_duplicate_count;
+    }
+
     // Run overlap analysis if enabled
-    if overlap_enabled && (functions_enabled || types_enabled) {
+    if overlap_enabled && (functions_enabled || types_enabled || classes_enabled) {
         println!("\n{}\n", separator);
     }
 
@@ -785,5 +825,322 @@ fn show_comparison_details(result: &similarity_core::TypeComparisonResult) {
             "Optionality differences: {}",
             result.differences.optionality_differences.join(", ")
         );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn check_classes(
+    paths: Vec<String>,
+    threshold: f64,
+    extensions: Option<&Vec<String>>,
+    print: bool,
+    no_inheritance: bool,
+    no_implements: bool,
+    exclude_patterns: &[String],
+) -> anyhow::Result<usize> {
+    use ignore::WalkBuilder;
+    use similarity_core::{extract_classes_from_code, find_similar_classes, ClassDefinition};
+    use std::collections::HashSet;
+    use std::fs;
+    use std::path::Path;
+
+    let default_extensions = vec!["ts", "tsx", "mts", "cts"];
+    let exts: Vec<&str> =
+        extensions.map_or(default_extensions, |v| v.iter().map(String::as_str).collect());
+
+    let exclude_matcher = create_exclude_matcher(exclude_patterns);
+    let mut files = Vec::new();
+    let mut visited = HashSet::new();
+
+    // Process each path
+    for path_str in &paths {
+        let path = Path::new(path_str);
+
+        if path.is_file() {
+            // If it's a file, check extension and add it
+            if let Some(ext) = path.extension() {
+                if let Some(ext_str) = ext.to_str() {
+                    if exts.contains(&ext_str) {
+                        if let Ok(canonical) = path.canonicalize() {
+                            if visited.insert(canonical.clone()) {
+                                files.push(path.to_path_buf());
+                            }
+                        }
+                    }
+                }
+            }
+        } else if path.is_dir() {
+            // If it's a directory, walk it respecting .gitignore
+            let walker = WalkBuilder::new(path).follow_links(false).build();
+
+            for entry in walker {
+                let entry = entry?;
+                let entry_path = entry.path();
+
+                // Skip if not a file
+                if !entry_path.is_file() {
+                    continue;
+                }
+
+                // Check if path should be excluded
+                if let Some(ref matcher) = exclude_matcher {
+                    if matcher.is_match(entry_path) {
+                        continue;
+                    }
+                }
+
+                // Check extension
+                if let Some(ext) = entry_path.extension() {
+                    if let Some(ext_str) = ext.to_str() {
+                        if exts.contains(&ext_str) {
+                            // Get canonical path to avoid duplicates
+                            if let Ok(canonical) = entry_path.canonicalize() {
+                                if visited.insert(canonical.clone()) {
+                                    files.push(entry_path.to_path_buf());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            eprintln!("Warning: Path not found: {}", path_str);
+        }
+    }
+
+    if files.is_empty() {
+        println!("No TypeScript files found in specified paths");
+        return Ok(0);
+    }
+
+    println!("Checking {} files for similar classes...\n", files.len());
+
+    // Extract classes from all files
+    let mut all_classes = Vec::new();
+    let mut excluded_classes = Vec::new();
+
+    for file in &files {
+        match fs::read_to_string(file) {
+            Ok(content) => {
+                let file_str = file.to_string_lossy();
+
+                // Extract classes
+                match extract_classes_from_code(&content, &file_str) {
+                    Ok(classes) => {
+                        for class in classes {
+                            // Check if class should be excluded
+                            let excluded_by_inheritance = no_inheritance && class.extends.is_some();
+                            let excluded_by_implements = no_implements && !class.implements.is_empty();
+                            
+                            if excluded_by_inheritance || excluded_by_implements {
+                                excluded_classes.push(class);
+                            } else {
+                                all_classes.push(class);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        // Skip files with parse errors silently
+                        if !e.contains("Parse errors:") {
+                            eprintln!("Error in {}: {}", file.display(), e);
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("Error reading {}: {}", file.display(), e);
+            }
+        }
+    }
+
+    if all_classes.is_empty() {
+        println!("No class definitions found!");
+        return Ok(0);
+    }
+
+    println!("Found {} class definitions", all_classes.len());
+    
+    if !excluded_classes.is_empty() {
+        println!("Excluded {} classes:", excluded_classes.len());
+        for class in &excluded_classes {
+            let reason = if class.extends.is_some() && !class.implements.is_empty() {
+                "extends & implements"
+            } else if class.extends.is_some() {
+                "extends"
+            } else {
+                "implements"
+            };
+            println!("  - {} ({})", class.name, reason);
+        }
+        println!("");
+    }
+
+    // Find similar classes across all files
+    let similar_pairs = find_similar_classes(&all_classes, threshold);
+
+    if similar_pairs.is_empty() {
+        println!("\nNo similar classes found!");
+    } else {
+        println!("\nSimilar classes found:");
+        println!("{}", "-".repeat(60));
+
+        for pair in &similar_pairs {
+            // Get relative paths
+            let relative_path1 = get_relative_path(&pair.class1.file_path);
+            let relative_path2 = get_relative_path(&pair.class2.file_path);
+
+            println!(
+                "\nSimilarity: {:.2}% (structural: {:.2}%, naming: {:.2}%)",
+                pair.result.similarity * 100.0,
+                pair.result.structural_similarity * 100.0,
+                pair.result.naming_similarity * 100.0
+            );
+            println!(
+                "  {}:{} | L{}-{} similar-class: {}",
+                relative_path1,
+                pair.class1.start_line,
+                pair.class1.start_line,
+                pair.class1.end_line,
+                pair.class1.name
+            );
+            println!(
+                "  {}:{} | L{}-{} similar-class: {}",
+                relative_path2,
+                pair.class2.start_line,
+                pair.class2.start_line,
+                pair.class2.end_line,
+                pair.class2.name
+            );
+
+            if print {
+                show_class_details(&pair.class1);
+                show_class_details(&pair.class2);
+                show_class_comparison_details(&pair.result);
+            }
+        }
+
+        println!("\nTotal similar class pairs found: {}", similar_pairs.len());
+    }
+    
+    // Suggest possible interface implementations
+    if !excluded_classes.is_empty() && !similar_pairs.is_empty() {
+        println!("\n{}", "=".repeat(60));
+        println!("💡 Refactoring suggestions:");
+        
+        // Check if excluded classes could implement a common interface
+        let implements_classes: Vec<_> = excluded_classes
+            .iter()
+            .filter(|c| !c.implements.is_empty())
+            .collect();
+            
+        if !implements_classes.is_empty() {
+            println!("\nClasses implementing interfaces that could be unified:");
+            for class in &implements_classes {
+                println!("  - {} implements {}", class.name, class.implements.join(", "));
+            }
+        }
+        
+        // Check if excluded classes with same base could be refactored
+        let mut extends_map = std::collections::HashMap::new();
+        for class in &excluded_classes {
+            if let Some(base) = &class.extends {
+                extends_map.entry(base.clone()).or_insert(Vec::new()).push(class.name.clone());
+            }
+        }
+        
+        if !extends_map.is_empty() {
+            println!("\nClasses extending same base class:");
+            for (base, classes) in extends_map {
+                if classes.len() > 1 {
+                    println!("  - Base: {} -> [{}]", base, classes.join(", "));
+                }
+            }
+        }
+    }
+
+    Ok(similar_pairs.len())
+}
+
+fn show_class_details(class: &similarity_core::ClassDefinition) {
+    println!("\n\x1b[36m--- Class {} ---\x1b[0m", class.name);
+
+    if let Some(extends) = &class.extends {
+        println!("Extends: {}", extends);
+    }
+
+    if !class.implements.is_empty() {
+        println!("Implements: {}", class.implements.join(", "));
+    }
+
+    if !class.properties.is_empty() {
+        println!("Properties:");
+        for prop in &class.properties {
+            let modifiers = format!(
+                "{}{}{}",
+                if prop.is_static { "static " } else { "" },
+                if prop.is_readonly { "readonly " } else { "" },
+                if prop.is_private { "private " } else { "" }
+            );
+            let optional = if prop.is_optional { "?" } else { "" };
+            println!("  {}{}{}: {}", modifiers, prop.name, optional, prop.type_annotation);
+        }
+    }
+
+    if !class.methods.is_empty() {
+        println!("Methods:");
+        for method in &class.methods {
+            let modifiers = format!(
+                "{}{}{}{}",
+                if method.is_static { "static " } else { "" },
+                if method.is_private { "private " } else { "" },
+                if method.is_async { "async " } else { "" },
+                if method.is_generator { "*" } else { "" }
+            );
+            let kind_str = match method.kind {
+                similarity_core::MethodKind::Getter => "get ",
+                similarity_core::MethodKind::Setter => "set ",
+                _ => "",
+            };
+            println!(
+                "  {}{}{}({}): {}",
+                modifiers,
+                kind_str,
+                method.name,
+                method.parameters.join(", "),
+                method.return_type
+            );
+        }
+    }
+}
+
+fn show_class_comparison_details(result: &similarity_core::ClassComparisonResult) {
+    if !result.differences.missing_properties.is_empty() {
+        println!("Missing properties: {}", result.differences.missing_properties.join(", "));
+    }
+
+    if !result.differences.extra_properties.is_empty() {
+        println!("Extra properties: {}", result.differences.extra_properties.join(", "));
+    }
+
+    if !result.differences.missing_methods.is_empty() {
+        println!("Missing methods: {}", result.differences.missing_methods.join(", "));
+    }
+
+    if !result.differences.extra_methods.is_empty() {
+        println!("Extra methods: {}", result.differences.extra_methods.join(", "));
+    }
+
+    if !result.differences.property_type_mismatches.is_empty() {
+        println!("Property type mismatches:");
+        for mismatch in &result.differences.property_type_mismatches {
+            println!("  {}: {} vs {}", mismatch.name, mismatch.type1, mismatch.type2);
+        }
+    }
+
+    if !result.differences.method_signature_mismatches.is_empty() {
+        println!("Method signature mismatches:");
+        for mismatch in &result.differences.method_signature_mismatches {
+            println!("  {}: {} vs {}", mismatch.name, mismatch.signature1, mismatch.signature2);
+        }
     }
 }

@@ -3,6 +3,8 @@
 pub mod apted;
 pub mod ast_exchange;
 pub mod ast_fingerprint;
+pub mod class_comparator;
+pub mod class_extractor;
 pub mod enhanced_similarity;
 pub mod fast_similarity;
 pub mod function_extractor;
@@ -17,6 +19,7 @@ pub mod tree;
 pub mod tsed;
 pub mod type_comparator;
 pub mod type_extractor;
+pub mod type_fingerprint;
 pub mod type_normalizer;
 
 // CLI utilities
@@ -76,4 +79,15 @@ pub use generic_overlap_detector::{
     find_function_overlaps_generic, find_overlaps_across_files_generic,
     find_overlaps_with_similarity_generic, DetailedOverlap as GenericDetailedOverlap,
     PartialOverlapWithFiles as GenericPartialOverlapWithFiles,
+};
+
+// Class-related exports
+pub use class_extractor::{
+    extract_classes_from_code, extract_classes_from_files, ClassDefinition, ClassMethod,
+    ClassProperty, MethodKind,
+};
+pub use class_comparator::{
+    compare_classes, find_similar_classes, find_similar_classes_across_files, normalize_class,
+    ClassComparisonResult, ClassDifferences, MethodMismatch, NormalizedClass, PropertyMismatch,
+    SimilarClassPair,
 };

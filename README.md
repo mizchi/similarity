@@ -169,11 +169,17 @@ cargo install --path crates/similarity-rs
 # Check for duplicate functions (default)
 similarity-ts ./src
 
-# Enable type checking (experimental)
-similarity-ts ./src --experimental-types
+# Enable type checking (default enabled)
+similarity-ts ./src --no-types  # disable type checking
 
 # Check types only
-similarity-ts ./src --no-functions --experimental-types
+similarity-ts ./src --no-functions
+
+# Check classes for similarity
+similarity-ts ./src --classes
+
+# Check classes only
+similarity-ts ./src --classes-only
 
 # Fast mode with bloom filter (default)
 similarity-ts ./src --no-fast  # disable

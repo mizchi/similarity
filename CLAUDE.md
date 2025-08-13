@@ -81,6 +81,7 @@ __deprecated/        # Deprecated TypeScript prototype
 
 ### TypeScript/JavaScript Specific
 - Type similarity detection (interfaces, type aliases, type literals)
+- Class similarity detection (properties, methods, inheritance)
 - JSX/TSX support
 - ES6+ syntax support (arrow functions, classes, etc.)
 - Fast parsing with oxc_parser
