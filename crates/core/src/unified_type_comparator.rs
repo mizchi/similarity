@@ -2,6 +2,8 @@ use crate::type_comparator::{
     compare_type_literal_with_type, compare_types, TypeComparisonOptions, TypeComparisonResult,
 };
 use crate::type_extractor::{TypeDefinition, TypeKind, TypeLiteralDefinition};
+use crate::typescript_structure_adapter::TypeScriptStructureComparator;
+use crate::structure_comparator::{Structure, ComparisonOptions};
 
 #[derive(Debug, Clone)]
 pub enum UnifiedType {
@@ -168,5 +170,89 @@ pub fn find_similar_unified_types(
     // Sort by similarity (descending)
     similar_pairs.sort_by(|a, b| b.result.similarity.partial_cmp(&a.result.similarity).unwrap());
 
+    similar_pairs
+}
+
+/// Find similar types using the new generalized structure comparison framework
+pub fn find_similar_unified_types_structured(
+    type_definitions: &[TypeDefinition],
+    type_literals: &[TypeLiteralDefinition],
+    threshold: f64,
+    options: Option<ComparisonOptions>,
+) -> Vec<UnifiedTypeComparisonPair> {
+    let mut comparator = if let Some(opts) = options {
+        TypeScriptStructureComparator::with_options(opts)
+    } else {
+        TypeScriptStructureComparator::new()
+    };
+    
+    let mut similar_pairs = Vec::new();
+    
+    // Convert all to structures
+    let mut all_structures: Vec<(UnifiedType, Structure)> = Vec::new();
+    
+    for type_def in type_definitions {
+        let unified = UnifiedType::TypeDef(type_def.clone());
+        let structure = Structure::from(type_def.clone());
+        all_structures.push((unified, structure));
+    }
+    
+    for type_literal in type_literals {
+        let unified = UnifiedType::TypeLiteral(type_literal.clone());
+        let structure = Structure::from(type_literal.clone());
+        all_structures.push((unified, structure));
+    }
+    
+    // Compare all pairs
+    for i in 0..all_structures.len() {
+        for j in (i + 1)..all_structures.len() {
+            let (unified1, struct1) = &all_structures[i];
+            let (unified2, struct2) = &all_structures[j];
+            
+            if !should_compare(unified1, unified2) {
+                continue;
+            }
+            
+            let result = comparator.comparator.compare(struct1, struct2);
+            
+            if result.overall_similarity >= threshold {
+                // Convert structure comparison result to TypeComparisonResult
+                let type_result = TypeComparisonResult {
+                    similarity: result.overall_similarity,
+                    structural_similarity: result.member_similarity,
+                    naming_similarity: result.identifier_similarity,
+                    matched_properties: result.member_matches.iter().map(|m| {
+                        crate::type_comparator::MatchedProperty {
+                            prop1: m.member1.clone(),
+                            prop2: m.member2.clone(),
+                            similarity: m.similarity,
+                        }
+                    }).collect(),
+                    differences: crate::type_comparator::TypeDifferences {
+                        missing_properties: result.differences.missing_members.clone(),
+                        extra_properties: result.differences.extra_members.clone(),
+                        type_mismatches: result.differences.type_mismatches.iter().map(|(name, t1, t2)| {
+                            crate::type_comparator::TypeMismatch {
+                                property: name.clone(),
+                                type1: t1.clone(),
+                                type2: t2.clone(),
+                            }
+                        }).collect(),
+                        optionality_differences: Vec::new(),
+                    },
+                };
+                
+                similar_pairs.push(UnifiedTypeComparisonPair {
+                    type1: unified1.clone(),
+                    type2: unified2.clone(),
+                    result: type_result,
+                });
+            }
+        }
+    }
+    
+    // Sort by similarity (descending)
+    similar_pairs.sort_by(|a, b| b.result.similarity.partial_cmp(&a.result.similarity).unwrap());
+    
     similar_pairs
 }

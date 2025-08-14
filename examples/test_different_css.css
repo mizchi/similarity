@@ -1,0 +1,142 @@
+/* Test file with clearly different CSS structures */
+
+/* Completely different structures */
+
+/* Animation keyframes */
+@keyframes slide-in {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Media query */
+@media (max-width: 768px) {
+    .responsive-container {
+        padding: 10px;
+        width: 100%;
+    }
+}
+
+/* Pseudo-element styling */
+.tooltip::before {
+    content: "";
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 0 5px 5px 5px;
+    border-style: solid;
+    border-color: transparent transparent #333 transparent;
+}
+
+/* Table styling - different from buttons */
+table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-family: Arial, sans-serif;
+}
+
+/* Complex selector */
+.sidebar > nav ul li a:hover {
+    background-color: #f0f0f0;
+    color: #007bff;
+    padding-left: 25px;
+}
+
+/* Print styles */
+@media print {
+    .no-print {
+        display: none;
+    }
+    
+    body {
+        font-size: 12pt;
+        color: black;
+        background: white;
+    }
+}
+
+/* CSS variables */
+:root {
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+    --spacing-unit: 8px;
+    --border-radius: 4px;
+}
+
+/* Flexbox utility */
+.flex-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Position utility */
+.absolute-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Typography utility */
+.text-uppercase {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Visibility utility */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Background gradient */
+.gradient-bg {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Box shadow utility */
+.shadow-lg {
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+/* Border utility */
+.border-dashed {
+    border: 2px dashed #dee2e6;
+}
+
+/* Transform utility */
+.rotate-45 {
+    transform: rotate(45deg);
+}
+
+/* Transition utility */
+.transition-all {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Filter utility */
+.blur {
+    filter: blur(4px);
+}
+
+/* Overflow utility */
+.overflow-ellipsis {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

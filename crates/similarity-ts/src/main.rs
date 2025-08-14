@@ -145,6 +145,10 @@ struct Cli {
     /// Exit with code 1 if duplicates are found
     #[arg(long)]
     fail_on_duplicates: bool,
+    
+    /// Use new generalized structure comparison framework (experimental)
+    #[arg(long)]
+    use_structure_comparison: bool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -221,6 +225,7 @@ fn main() -> anyhow::Result<()> {
             include_type_literals,
             unified_types_enabled,
             &cli.exclude,
+            cli.use_structure_comparison,
         )?;
         total_duplicates += type_duplicate_count;
     }
@@ -325,12 +330,13 @@ fn check_types(
     include_type_literals: bool,
     unified_types: bool,
     exclude_patterns: &[String],
+    use_structure_comparison: bool,
 ) -> anyhow::Result<usize> {
     use ignore::WalkBuilder;
     use similarity_core::{
         extract_type_literals_from_code, extract_types_from_code, find_similar_type_literals,
-        find_similar_types, find_similar_unified_types, TypeComparisonOptions, TypeKind,
-        UnifiedType,
+        find_similar_types, find_similar_unified_types, find_similar_unified_types_structured,
+        TypeComparisonOptions, TypeKind, UnifiedType, ComparisonOptions,
     };
     use std::collections::HashSet;
     use std::fs;
@@ -499,8 +505,24 @@ fn check_types(
     // Handle unified type comparison if enabled
     let (similar_pairs, type_literal_pairs, type_literal_to_literal_pairs) = if unified_types {
         // Use unified comparison that combines all types
-        let unified_pairs =
-            find_similar_unified_types(&all_types, &all_type_literals, threshold, &options);
+        let unified_pairs = if use_structure_comparison {
+            // Use new generalized structure comparison framework
+            let structure_options = ComparisonOptions {
+                name_weight: naming_weight,
+                structure_weight: structural_weight,
+                threshold,
+                ..Default::default()
+            };
+            find_similar_unified_types_structured(
+                &all_types,
+                &all_type_literals,
+                threshold,
+                Some(structure_options),
+            )
+        } else {
+            // Use existing comparison method
+            find_similar_unified_types(&all_types, &all_type_literals, threshold, &options)
+        };
 
         // Convert unified pairs to the existing format for display (for now)
         let mut regular_pairs = Vec::new();

@@ -3,9 +3,12 @@ name = "similarity-css"
 version = "0.4.1"
 edition = "2021"
 authors = ["similarity contributors"]
+description = "CSS/SCSS similarity detection tool (experimental)"
+license = "MIT"
+repository = "https://github.com/mizchi/similarity"
 
 [dependencies]
-similarity-core = { path = "../core" }
+similarity-core = { version = "0.4.1", path = "../core" }
 clap = { version = "4.0", features = ["derive"] }
 tree-sitter = "0.24"
 tree-sitter-css = "0.23"

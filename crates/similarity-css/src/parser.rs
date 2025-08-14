@@ -138,10 +138,35 @@ impl LanguageParser for CssParser {
 fn extract_rules(node: &Node, source: &str, functions: &mut Vec<GenericFunctionDef>) {
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
+        // Debug: print node kinds to understand the structure
+        if std::env::var("DEBUG_CSS").is_ok() {
+            eprintln!("Node kind: {}", child.kind());
+        }
         match child.kind() {
             "rule_set" | "ruleset" => {
-                if let Some(selector) = child.child_by_field_name("selectors") {
-                    let selector_text = selector.utf8_text(source.as_bytes()).unwrap_or("");
+                // Try to get selector - CSS uses different structure
+                let selector = child.child_by_field_name("selectors")
+                    .or_else(|| child.child(0)); // fallback to first child
+                    
+                if let Some(selector_node) = selector {
+                    let selector_text = selector_node.utf8_text(source.as_bytes()).unwrap_or("");
+
+                    // Extract declarations for decorators field
+                    let mut decorators = Vec::new();
+                    if let Some(block) = child.child_by_field_name("block") {
+                        let mut block_cursor = block.walk();
+                        for decl in block.children(&mut block_cursor) {
+                            if decl.kind() == "declaration" {
+                                if let Some(prop) = decl.child_by_field_name("property") {
+                                    if let Some(val) = decl.child_by_field_name("value") {
+                                        let prop_text = prop.utf8_text(source.as_bytes()).unwrap_or("");
+                                        let val_text = val.utf8_text(source.as_bytes()).unwrap_or("");
+                                        decorators.push(format!("{}: {}", prop_text, val_text));
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     functions.push(GenericFunctionDef {
                         name: selector_text.to_string(),
@@ -154,7 +179,7 @@ fn extract_rules(node: &Node, source: &str, functions: &mut Vec<GenericFunctionD
                         class_name: None,
                         is_async: false,
                         is_generator: false,
-                        decorators: vec![],
+                        decorators,
                     });
                 }
             }

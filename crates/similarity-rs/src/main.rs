@@ -90,6 +90,10 @@ struct Cli {
     /// Disable function similarity checking
     #[arg(long = "no-functions")]
     no_functions: bool,
+    
+    /// Use new generalized structure comparison framework (experimental)
+    #[arg(long)]
+    use_structure_comparison: bool,
 }
 
 fn main() -> Result<()> {
@@ -144,6 +148,7 @@ fn main() -> Result<()> {
             cli.extensions.as_ref(),
             cli.print,
             &cli.exclude,
+            cli.use_structure_comparison,
         )?;
         total_duplicates += type_duplicate_count;
     }

@@ -22,6 +22,10 @@ pub mod type_extractor;
 pub mod type_fingerprint;
 pub mod type_normalizer;
 pub mod unified_type_comparator;
+pub mod structure_comparator;
+pub mod typescript_structure_adapter;
+pub mod rust_structure_adapter;
+pub mod css_structure_adapter;
 
 // CLI utilities
 pub mod cli_file_utils;
@@ -57,7 +61,25 @@ pub use type_normalizer::{
     normalize_type, NormalizationOptions, NormalizedType, PropertyMatch,
 };
 pub use unified_type_comparator::{
-    find_similar_unified_types, UnifiedType, UnifiedTypeComparisonPair,
+    find_similar_unified_types, find_similar_unified_types_structured,
+    UnifiedType, UnifiedTypeComparisonPair,
+};
+
+// Structure comparator exports
+pub use structure_comparator::{
+    Structure, StructureIdentifier, StructureKind, StructureMember, StructureMetadata,
+    SourceLocation, StructureComparator, ComparisonOptions, StructureComparisonResult,
+    MemberMatch, StructureDifferences, MemberComparisonStrategy, compute_structure_fingerprint,
+    should_compare_fingerprints,
+};
+pub use typescript_structure_adapter::{
+    TypeScriptStructureComparator, BatchComparator,
+};
+pub use rust_structure_adapter::{
+    RustStructureComparator, RustStructDef, RustFieldDef, RustEnumDef, RustVariantDef, RustVariantType,
+};
+pub use css_structure_adapter::{
+    CssStructureComparator, CssStructDef, CssBatchComparator,
 };
 
 // Fast similarity exports
@@ -95,3 +117,6 @@ pub use class_extractor::{
     extract_classes_from_code, extract_classes_from_files, ClassDefinition, ClassMethod,
     ClassProperty, MethodKind,
 };
+
+#[cfg(test)]
+mod structure_comparator_tests;
