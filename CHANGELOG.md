@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2025-01-22
+
+### Added
+- **Cross-Language Structure Comparison Framework**
+  - Language-agnostic structure comparison engine for unified similarity detection
+  - TypeScript adapter for interfaces, type aliases, and classes
+  - Rust adapter with derive attribute support (treated as regular members)
+  - CSS adapter for rule and property comparison
+  - Fingerprint-based pre-filtering for improved performance
+  - Size penalty mechanism to reduce false positives
+  - `--use-structure-comparison` flag to enable the new comparison mode (TypeScript and CSS)
+
+### Changed
+- Rust struct/enum comparison now includes derive attributes as part of the structure
+- CSS parser improved to correctly extract rules and declarations
+
+### Fixed
+- CSS rule extraction in similarity-css now works correctly with tree-sitter-css
+
 ## [0.4.1] - 2025-01-21
 
 ### Fixed

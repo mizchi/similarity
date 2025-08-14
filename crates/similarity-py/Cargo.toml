@@ -1,6 +1,6 @@
 [package]
 name = "similarity-py"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
 license = "MIT"
 description = "CLI tool for detecting code duplication in Python projects"
@@ -19,7 +19,7 @@ path = "src/main.rs"
 name = "similarity_py"
 
 [dependencies]
-similarity-core = { version = "0.4.1", path = "../core" }
+similarity-core = { version = "0.4.2", path = "../core" }
 clap = { version = "4.0", features = ["derive"] }
 anyhow = "1.0"
 walkdir = "2.5"
