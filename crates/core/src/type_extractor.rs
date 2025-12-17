@@ -17,6 +17,7 @@ pub struct TypeDefinition {
     pub start_line: usize,
     pub end_line: usize,
     pub file_path: String,
+    pub has_ignore_directive: bool,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeKind {
@@ -152,6 +153,7 @@ impl TypeExtractor {
             start_line,
             end_line,
             file_path: self.file_path.clone(),
+            has_ignore_directive: false,
         })
     }
 
@@ -172,6 +174,7 @@ impl TypeExtractor {
             start_line,
             end_line,
             file_path: self.file_path.clone(),
+            has_ignore_directive: false,
         })
     }
 

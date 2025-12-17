@@ -28,6 +28,7 @@ tree-sitter-ruby = { workspace = true }
 rayon = "1.10"
 ignore = "0.4"
 anyhow = "1.0"
+regex = "1.12.2"
 
 [dev-dependencies]
 criterion = "0.5"

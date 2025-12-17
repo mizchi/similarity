@@ -378,6 +378,7 @@ pub fn compare_type_literal_with_type(
         start_line: type_literal.start_line,
         end_line: type_literal.end_line,
         file_path: type_literal.file_path.clone(),
+        has_ignore_directive: false,
     };
 
     compare_types(&temp_type_def, type_definition, options)
@@ -456,6 +457,7 @@ pub fn find_similar_type_literals_pairs(
                     start_line: type_literal2.start_line,
                     end_line: type_literal2.end_line,
                     file_path: type_literal2.file_path.clone(),
+                    has_ignore_directive: false,
                 },
                 options,
             );
@@ -495,6 +497,7 @@ mod tests {
             start_line: 1,
             end_line: 10,
             file_path: "test.ts".to_string(),
+            has_ignore_directive: false,
         }
     }
 

@@ -15,6 +15,7 @@ pub struct ClassDefinition {
     pub end_line: usize,
     pub file_path: String,
     pub is_abstract: bool,
+    pub has_ignore_directive: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -396,6 +397,7 @@ impl ClassExtractor {
             end_line,
             file_path: self.file_path.clone(),
             is_abstract: class.r#abstract,
+            has_ignore_directive: false,
         }
     }
 

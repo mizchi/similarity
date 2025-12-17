@@ -267,6 +267,7 @@ pub fn check_paths(
     filter_function: Option<&String>,
     filter_function_body: Option<&String>,
     exclude_patterns: &[String],
+    show_ignored: bool,
 ) -> anyhow::Result<usize> {
     let default_extensions = vec!["ts", "tsx", "js", "jsx", "mjs", "cjs", "mts", "cts"];
     let exts: Vec<&str> =
@@ -394,5 +395,41 @@ pub fn check_paths(
     let duplicate_count =
         display_all_results(all_results, print, filter_function, filter_function_body);
 
+    // Report ignored functions if requested
+    if show_ignored {
+        report_ignored_items(&files);
+    }
+
     Ok(duplicate_count)
+}
+
+fn report_ignored_items(files: &[PathBuf]) {
+    use similarity_core::function_extractor::extract_functions;
+
+    let mut ignored_count = 0;
+    let mut ignored_items = Vec::new();
+
+    for file in files {
+        if let Ok(content) = std::fs::read_to_string(file) {
+            if let Ok(functions) = extract_functions(file.to_str().unwrap_or(""), &content) {
+                for func in functions {
+                    if func.has_ignore_directive {
+                        ignored_count += 1;
+                        ignored_items.push((
+                            file.display().to_string(),
+                            func.name.clone(),
+                            func.start_line,
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    if ignored_count > 0 {
+        println!("Ignored {ignored_count} function(s) via similarity-ignore directive:");
+        for (file, name, line) in ignored_items {
+            println!("  {}:{} {}", file, line, name);
+        }
+    }
 }

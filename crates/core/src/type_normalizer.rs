@@ -446,6 +446,7 @@ mod tests {
             start_line: 1,
             end_line: 10,
             file_path: "test.ts".to_string(),
+            has_ignore_directive: false,
         }
     }
 

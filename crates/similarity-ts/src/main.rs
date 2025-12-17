@@ -82,6 +82,10 @@ struct Cli {
     #[arg(long)]
     filter_function_body: Option<String>,
 
+    /// Show functions/types/classes that were ignored via similarity-ignore comments
+    #[arg(long)]
+    show_ignored: bool,
+
     /// Include both interfaces and type aliases (deprecated - both are included by default)
     #[arg(long, hide = true)]
     include_types: bool,
@@ -200,6 +204,7 @@ fn main() -> anyhow::Result<()> {
             cli.filter_function.as_ref(),
             cli.filter_function_body.as_ref(),
             &cli.exclude,
+            cli.show_ignored,
         )?;
         total_duplicates += duplicate_count;
     }
