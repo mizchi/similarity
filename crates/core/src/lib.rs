@@ -27,6 +27,9 @@ pub mod typescript_structure_adapter;
 pub mod rust_structure_adapter;
 pub mod css_structure_adapter;
 
+pub mod config_loader;
+pub use config_loader::ConfigLoader;
+
 // CLI utilities
 pub mod cli_file_utils;
 pub mod cli_output;
