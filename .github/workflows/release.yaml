@@ -43,7 +43,7 @@ jobs:
             echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ steps.vars.outputs.tag }}
           fetch-depth: 0
@@ -84,7 +84,7 @@ jobs:
           echo "archive=$archive_basename.tar.gz" >> "$GITHUB_OUTPUT"
 
       - name: Upload packaged binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.target }}
           path: ${{ steps.package.outputs.archive }}
@@ -106,7 +106,7 @@ jobs:
           fi
 
       - name: Download release archives
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: dist
           merge-multiple: true
