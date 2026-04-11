@@ -10,8 +10,8 @@ repository = "https://github.com/mizchi/similarity"
 [dependencies]
 similarity-core = { version = "0.5.0", path = "../core" }
 clap = { version = "4.0", features = ["derive"] }
-tree-sitter = "0.24"
-tree-sitter-css = "0.23"
+tree-sitter = { workspace = true }
+tree-sitter-css = "0.25"
 tree-sitter-scss = "1.0"
 rayon = "1.7"
 serde = { version = "1.0", features = ["derive"] }

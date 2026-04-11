@@ -203,7 +203,7 @@ fn extract_from_statement(stmt: &Statement, ctx: &mut ExtractionContext) {
         Statement::VariableDeclaration(var_decl) => {
             for decl in &var_decl.declarations {
                 if let Some(Expression::ArrowFunctionExpression(arrow)) = &decl.init {
-                    if let BindingPatternKind::BindingIdentifier(ident) = &decl.id.kind {
+                    if let BindingPattern::BindingIdentifier(ident) = &decl.id {
                         let params = extract_parameters(&arrow.params);
                         let arrow_name = ident.name.to_string();
                         let start_line = get_line_number(arrow.span.start, ctx.source_text);
@@ -368,7 +368,7 @@ fn extract_from_declaration(decl: &Declaration, ctx: &mut ExtractionContext) {
         Declaration::VariableDeclaration(var) => {
             for decl in &var.declarations {
                 if let Some(Expression::ArrowFunctionExpression(arrow)) = &decl.init {
-                    if let BindingPatternKind::BindingIdentifier(ident) = &decl.id.kind {
+                    if let BindingPattern::BindingIdentifier(ident) = &decl.id {
                         let params = extract_parameters(&arrow.params);
                         let arrow_name = ident.name.to_string();
                         let start_line = get_line_number(arrow.span.start, ctx.source_text);
@@ -407,8 +407,8 @@ fn extract_parameters(params: &oxc_ast::ast::FormalParameters) -> Vec<String> {
     params
         .items
         .iter()
-        .filter_map(|param| match &param.pattern.kind {
-            BindingPatternKind::BindingIdentifier(ident) => Some(ident.name.to_string()),
+        .filter_map(|param| match &param.pattern {
+            BindingPattern::BindingIdentifier(ident) => Some(ident.name.to_string()),
             _ => None,
         })
         .collect()

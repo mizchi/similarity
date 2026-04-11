@@ -337,15 +337,12 @@ impl TypeExtractor {
             .items
             .iter()
             .map(|param| {
-                let param_name = match &param.pattern.kind {
-                    oxc_ast::ast::BindingPatternKind::BindingIdentifier(ident) => {
-                        ident.name.as_str()
-                    }
+                let param_name = match &param.pattern {
+                    oxc_ast::ast::BindingPattern::BindingIdentifier(ident) => ident.name.as_str(),
                     _ => "_",
                 };
 
                 let param_type = param
-                    .pattern
                     .type_annotation
                     .as_ref()
                     .map(|ta| self.extract_type_string(&ta.type_annotation))
@@ -409,7 +406,7 @@ impl TypeExtractor {
                     // Extract parameter type literals
                     for param in &func.params.items {
                         if let Some(param_name) = self.get_parameter_name(param) {
-                            if let Some(type_annotation) = &param.pattern.type_annotation {
+                            if let Some(type_annotation) = &param.type_annotation {
                                 if let Some(type_literal) = self.extract_type_literal_from_ts_type(
                                     &type_annotation.type_annotation,
                                     TypeLiteralContext::FunctionParameter(
@@ -428,7 +425,7 @@ impl TypeExtractor {
                 for declarator in &var_decl.declarations {
                     if let Some(var_name) = self.get_variable_name(declarator) {
                         // Check for variable type annotation
-                        if let Some(type_annotation) = &declarator.id.type_annotation {
+                        if let Some(type_annotation) = &declarator.type_annotation {
                             if let Some(type_literal) = self.extract_type_literal_from_ts_type(
                                 &type_annotation.type_annotation,
                                 TypeLiteralContext::VariableDeclaration(var_name.clone()),
@@ -506,19 +503,15 @@ impl TypeExtractor {
     }
 
     fn get_parameter_name(&self, param: &oxc_ast::ast::FormalParameter) -> Option<String> {
-        match &param.pattern.kind {
-            oxc_ast::ast::BindingPatternKind::BindingIdentifier(ident) => {
-                Some(ident.name.to_string())
-            }
+        match &param.pattern {
+            oxc_ast::ast::BindingPattern::BindingIdentifier(ident) => Some(ident.name.to_string()),
             _ => None,
         }
     }
 
     fn get_variable_name(&self, declarator: &VariableDeclarator) -> Option<String> {
-        match &declarator.id.kind {
-            oxc_ast::ast::BindingPatternKind::BindingIdentifier(ident) => {
-                Some(ident.name.to_string())
-            }
+        match &declarator.id {
+            oxc_ast::ast::BindingPattern::BindingIdentifier(ident) => Some(ident.name.to_string()),
             _ => None,
         }
     }

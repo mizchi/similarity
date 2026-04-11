@@ -94,7 +94,7 @@ impl PythonParser {
                 }
                 "decorated_definition" => {
                     // Check if it decorates a function
-                    if let Some(child) = node.child(node.child_count().saturating_sub(1)) {
+                    if let Some(child) = node.child(node.child_count().saturating_sub(1) as u32) {
                         if child.kind() == "function_definition" {
                             if let Some(name_node) = child.child_by_field_name("name") {
                                 if let Ok(name) = name_node.utf8_text(source.as_bytes()) {
