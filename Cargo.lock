@@ -1392,7 +1392,7 @@ checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
 
 [[package]]
 name = "similarity-core"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "criterion",
@@ -1417,7 +1417,7 @@ dependencies = [
 
 [[package]]
 name = "similarity-css"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "clap",
  "ignore",
@@ -1435,7 +1435,7 @@ dependencies = [
 
 [[package]]
 name = "similarity-elixir"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -1452,7 +1452,7 @@ dependencies = [
 
 [[package]]
 name = "similarity-generic"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -1474,7 +1474,7 @@ dependencies = [
 
 [[package]]
 name = "similarity-md"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -1495,7 +1495,7 @@ dependencies = [
 
 [[package]]
 name = "similarity-php"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -1512,7 +1512,7 @@ dependencies = [
 
 [[package]]
 name = "similarity-py"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -1529,7 +1529,7 @@ dependencies = [
 
 [[package]]
 name = "similarity-rs"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -1548,7 +1548,7 @@ dependencies = [
 
 [[package]]
 name = "similarity-ts"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "assert_cmd",

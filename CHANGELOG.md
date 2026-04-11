@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-04-11
+
+### Added
+- `// similarity-ignore` support for TypeScript functions, types, and classes
+- `--show-ignored` reporting in `similarity-ts`
+- `similarity.toml` loading support for `similarity-rs`
+
+### Changed
+- Rust short-function similarity now accounts for signature differences to reduce false positives
+- Exported TypeScript declarations are handled correctly in AST overlap parsing
+- CSS/SCSS parsing and duplicate detection behavior was stabilized to match CI expectations
+
 ## [0.4.2] - 2025-01-22
 
 ### Added
