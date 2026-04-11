@@ -6,9 +6,30 @@ use crate::parallel::{
 };
 use ignore::WalkBuilder;
 use similarity_core::{extract_functions, TSEDOptions};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+struct FunctionNodeKey {
+    file: PathBuf,
+    name: String,
+    class_name: Option<String>,
+    start_line: u32,
+    end_line: u32,
+}
+
+#[derive(Debug, Clone)]
+struct ClusterMember {
+    file: PathBuf,
+    function: similarity_core::FunctionDefinition,
+}
+
+#[derive(Debug, Clone)]
+struct DuplicateCluster {
+    members: Vec<ClusterMember>,
+    pairs: Vec<DuplicateResult>,
+}
 
 fn create_exclude_matcher(exclude_patterns: &[String]) -> Option<globset::GlobSet> {
     if exclude_patterns.is_empty() {
@@ -88,6 +109,7 @@ fn show_function_code(file_path: &str, function_name: &str, start_line: u32, end
 }
 
 /// Structure to hold all similarity results
+#[derive(Debug, Clone)]
 struct DuplicateResult {
     file1: PathBuf,
     file2: PathBuf,
@@ -101,6 +123,127 @@ impl DuplicateResult {
             (self.result.func1.line_count() + self.result.func2.line_count()) as f64 / 2.0;
         self.result.similarity * avg_lines
     }
+}
+
+fn function_node_key(
+    file: &Path,
+    function: &similarity_core::FunctionDefinition,
+) -> FunctionNodeKey {
+    FunctionNodeKey {
+        file: file.to_path_buf(),
+        name: function.name.clone(),
+        class_name: function.class_name.clone(),
+        start_line: function.start_line,
+        end_line: function.end_line,
+    }
+}
+
+fn relative_display_path(path: &Path) -> String {
+    if let Ok(current_dir) = std::env::current_dir() {
+        path.strip_prefix(&current_dir).unwrap_or(path).to_string_lossy().to_string()
+    } else {
+        path.to_string_lossy().to_string()
+    }
+}
+
+fn cluster_duplicate_results(
+    all_results: &[DuplicateResult],
+) -> (Vec<DuplicateCluster>, Vec<DuplicateResult>) {
+    let mut adjacency: HashMap<FunctionNodeKey, HashSet<FunctionNodeKey>> = HashMap::new();
+    let mut members: HashMap<FunctionNodeKey, ClusterMember> = HashMap::new();
+
+    for dup in all_results {
+        let key1 = function_node_key(&dup.file1, &dup.result.func1);
+        let key2 = function_node_key(&dup.file2, &dup.result.func2);
+
+        adjacency.entry(key1.clone()).or_default().insert(key2.clone());
+        adjacency.entry(key2.clone()).or_default().insert(key1.clone());
+
+        members.entry(key1.clone()).or_insert_with(|| ClusterMember {
+            file: dup.file1.clone(),
+            function: dup.result.func1.clone(),
+        });
+        members.entry(key2.clone()).or_insert_with(|| ClusterMember {
+            file: dup.file2.clone(),
+            function: dup.result.func2.clone(),
+        });
+    }
+
+    let mut visited = HashSet::new();
+    let mut clusters = Vec::new();
+    let mut standalone_pairs = Vec::new();
+
+    for key in adjacency.keys() {
+        if visited.contains(key) {
+            continue;
+        }
+
+        let mut queue = VecDeque::from([key.clone()]);
+        let mut component = Vec::new();
+        let mut component_set = HashSet::new();
+
+        while let Some(node) = queue.pop_front() {
+            if !visited.insert(node.clone()) {
+                continue;
+            }
+
+            component_set.insert(node.clone());
+            component.push(node.clone());
+
+            if let Some(neighbors) = adjacency.get(&node) {
+                for neighbor in neighbors {
+                    if !visited.contains(neighbor) {
+                        queue.push_back(neighbor.clone());
+                    }
+                }
+            }
+        }
+
+        if component.len() >= 3 {
+            let mut cluster_members: Vec<_> =
+                component.iter().filter_map(|node| members.get(node).cloned()).collect();
+            cluster_members.sort_by(|a, b| {
+                relative_display_path(&a.file)
+                    .cmp(&relative_display_path(&b.file))
+                    .then(a.function.start_line.cmp(&b.function.start_line))
+                    .then(a.function.name.cmp(&b.function.name))
+            });
+
+            let mut cluster_pairs: Vec<_> = all_results
+                .iter()
+                .filter(|dup| {
+                    let key1 = function_node_key(&dup.file1, &dup.result.func1);
+                    let key2 = function_node_key(&dup.file2, &dup.result.func2);
+                    component_set.contains(&key1) && component_set.contains(&key2)
+                })
+                .cloned()
+                .collect();
+            cluster_pairs.sort_by(|a, b| {
+                b.priority().partial_cmp(&a.priority()).unwrap_or(std::cmp::Ordering::Equal)
+            });
+
+            clusters.push(DuplicateCluster { members: cluster_members, pairs: cluster_pairs });
+        } else if component.len() == 2 {
+            if let Some(pair) = all_results.iter().find(|dup| {
+                let key1 = function_node_key(&dup.file1, &dup.result.func1);
+                let key2 = function_node_key(&dup.file2, &dup.result.func2);
+                component_set.contains(&key1) && component_set.contains(&key2)
+            }) {
+                standalone_pairs.push(pair.clone());
+            }
+        }
+    }
+
+    clusters.sort_by(|a, b| {
+        let a_priority = a.pairs.first().map(DuplicateResult::priority).unwrap_or(0.0);
+        let b_priority = b.pairs.first().map(DuplicateResult::priority).unwrap_or(0.0);
+        b_priority.partial_cmp(&a_priority).unwrap_or(std::cmp::Ordering::Equal)
+    });
+    standalone_pairs.sort_by(|a, b| {
+        b.priority().partial_cmp(&a.priority()).unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    (clusters, standalone_pairs)
 }
 
 /// Display similarity results
@@ -172,34 +315,71 @@ fn display_all_results(
         return 0;
     }
 
-    // Sort by priority (impact * similarity)
-    all_results.sort_by(|a, b| {
-        b.priority().partial_cmp(&a.priority()).unwrap_or(std::cmp::Ordering::Equal)
-    });
+    let (clusters, standalone_pairs) = cluster_duplicate_results(&all_results);
 
-    println!("\nFound {} duplicate pairs:", all_results.len());
+    if !clusters.is_empty() {
+        let cluster_label = if clusters.len() == 1 { "cluster" } else { "clusters" };
+        if standalone_pairs.is_empty() {
+            println!("\nFound {} duplicate {}:", clusters.len(), cluster_label);
+        } else {
+            let pair_label = if standalone_pairs.len() == 1 { "pair" } else { "pairs" };
+            println!(
+                "\nFound {} duplicate {} and {} duplicate {}:",
+                clusters.len(),
+                cluster_label,
+                standalone_pairs.len(),
+                pair_label
+            );
+        }
+    } else {
+        println!("\nFound {} duplicate pairs:", standalone_pairs.len());
+    }
     println!("{}", "-".repeat(60));
 
-    for dup in &all_results {
-        // Get relative paths
-        let (relative_path1, relative_path2) = if let Ok(current_dir) = std::env::current_dir() {
-            (
-                dup.file1
-                    .strip_prefix(&current_dir)
-                    .unwrap_or(&dup.file1)
-                    .to_string_lossy()
-                    .to_string(),
-                dup.file2
-                    .strip_prefix(&current_dir)
-                    .unwrap_or(&dup.file2)
-                    .to_string_lossy()
-                    .to_string(),
-            )
-        } else {
-            (dup.file1.to_string_lossy().to_string(), dup.file2.to_string_lossy().to_string())
-        };
+    for (index, cluster) in clusters.iter().enumerate() {
+        let avg_similarity = cluster.pairs.iter().map(|pair| pair.result.similarity).sum::<f64>()
+            / cluster.pairs.len() as f64;
+        let best_score = cluster.pairs.first().map(DuplicateResult::priority).unwrap_or(0.0);
 
-        // Calculate the line counts
+        println!(
+            "\nCluster {}: {} functions, {} pairwise matches, avg similarity {:.2}%, best score {:.1}",
+            index + 1,
+            cluster.members.len(),
+            cluster.pairs.len(),
+            avg_similarity * 100.0,
+            best_score
+        );
+
+        for member in &cluster.members {
+            let relative_path = relative_display_path(&member.file);
+            println!(
+                "  {}",
+                format_function_output(
+                    &relative_path,
+                    &member.function.name,
+                    member.function.start_line,
+                    member.function.end_line,
+                )
+            );
+        }
+
+        if print {
+            for member in &cluster.members {
+                let relative_path = relative_display_path(&member.file);
+                show_function_code(
+                    &relative_path,
+                    &member.function.name,
+                    member.function.start_line,
+                    member.function.end_line,
+                );
+            }
+        }
+    }
+
+    for dup in &standalone_pairs {
+        let relative_path1 = relative_display_path(&dup.file1);
+        let relative_path2 = relative_display_path(&dup.file2);
+
         let line_count1 = dup.result.func1.line_count();
         let line_count2 = dup.result.func2.line_count();
         let min_lines = line_count1.min(line_count2);
@@ -250,7 +430,7 @@ fn display_all_results(
         }
     }
 
-    all_results.len()
+    clusters.len() + standalone_pairs.len()
 }
 
 #[allow(clippy::too_many_arguments)]

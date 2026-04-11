@@ -248,6 +248,57 @@ export function handleList(list: number[]): number {
 }
 
 #[test]
+fn test_three_similar_functions_are_grouped_into_one_cluster() {
+    let dir = tempdir().unwrap();
+    let sample_path = dir.path().join("cluster.ts");
+
+    fs::write(
+        &sample_path,
+        r#"
+export function calculateSum(numbers: number[]): number {
+    let total = 0;
+    for (const number of numbers) {
+        total += number;
+    }
+    return total;
+}
+
+export function computeTotal(values: number[]): number {
+    let total = 0;
+    for (const value of values) {
+        total += value;
+    }
+    return total;
+}
+
+export function aggregateAmount(items: number[]): number {
+    let total = 0;
+    for (const item of items) {
+        total += item;
+    }
+    return total;
+}
+"#,
+    )
+    .unwrap();
+
+    Command::cargo_bin("similarity-ts")
+        .unwrap()
+        .arg(dir.path())
+        .arg("--threshold")
+        .arg("0.8")
+        .arg("--min-lines")
+        .arg("1")
+        .arg("--no-size-penalty")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Found 1 duplicate cluster"))
+        .stdout(predicate::str::contains("calculateSum"))
+        .stdout(predicate::str::contains("computeTotal"))
+        .stdout(predicate::str::contains("aggregateAmount"));
+}
+
+#[test]
 fn test_multiple_paths() {
     let dir = tempdir().unwrap();
     let dir1 = dir.path().join("src");
