@@ -189,6 +189,47 @@ fn func2(y: i32) -> i32 {
 }
 
 #[test]
+fn test_rust_signature_differences_reduce_short_function_false_positives() {
+    let dir = tempdir().unwrap();
+    let file_path = dir.path().join("signature_false_positive.rs");
+
+    let content = r#"
+fn render_count(_text: &str) -> usize {
+    let value = 8080;
+    if value > 0 {
+        value + 1
+    } else {
+        0
+    }
+}
+
+fn cache_ready(_flag: bool) -> i32 {
+    let value = 8080;
+    if value > 0 {
+        value + 1
+    } else {
+        0
+    }
+}
+"#;
+
+    fs::write(&file_path, content).unwrap();
+
+    Command::cargo_bin("similarity-rs")
+        .unwrap()
+        .arg(&file_path)
+        .arg("--threshold")
+        .arg("0.90")
+        .arg("--min-lines")
+        .arg("1")
+        .arg("--min-tokens")
+        .arg("1")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("No duplicate functions found!"));
+}
+
+#[test]
 fn test_min_lines_filtering() {
     let dir = tempdir().unwrap();
     let file_path = dir.path().join("min_lines_test.rs");

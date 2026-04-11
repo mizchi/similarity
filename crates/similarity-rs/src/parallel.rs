@@ -6,6 +6,7 @@ use similarity_core::{
     language_parser::{GenericFunctionDef, LanguageParser},
     tsed::TSEDOptions,
 };
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
@@ -96,15 +97,17 @@ pub fn check_within_file_duplicates_parallel(
                                             continue;
                                         }
 
-                                        // Extract function bodies
+                                        // Extract full function source so Rust signatures
+                                        // contribute to similarity, reducing false positives
+                                        // on short functions with identical bodies.
                                         let lines: Vec<&str> = code.lines().collect();
-                                        let body1 = extract_function_body(&lines, func1);
-                                        let body2 = extract_function_body(&lines, func2);
+                                        let source1 = extract_function_source(&lines, func1);
+                                        let source2 = extract_function_source(&lines, func2);
 
-                                        // Parse function bodies to trees
+                                        // Parse function source to trees
                                         let (tree1_opt, tree2_opt) = match (
-                                            parser.parse(&body1, &format!("{}:func1", file_str)),
-                                            parser.parse(&body2, &format!("{}:func2", file_str)),
+                                            parser.parse(&source1, &format!("{}:func1", file_str)),
+                                            parser.parse(&source2, &format!("{}:func2", file_str)),
                                         ) {
                                             (Ok(tree1), Ok(tree2)) => {
                                                 // Skip if either tree is empty
@@ -133,8 +136,16 @@ pub fn check_within_file_duplicates_parallel(
                                                 }
                                                 // For Rust, use TSED instead of enhanced similarity
                                                 // to better handle short functions
-                                                similarity_core::tsed::calculate_tsed(
-                                                    &tree1, &tree2, options,
+                                                let body_similarity =
+                                                    similarity_core::tsed::calculate_tsed(
+                                                        &tree1, &tree2, options,
+                                                    );
+                                                blend_rust_similarity(
+                                                    body_similarity,
+                                                    &source1,
+                                                    &source2,
+                                                    func1,
+                                                    func2,
                                                 )
                                             }
                                             _ => 0.0,
@@ -167,25 +178,94 @@ pub fn check_within_file_duplicates_parallel(
         .collect()
 }
 
-/// Extract function body only (excluding signature)
-fn extract_function_body(lines: &[&str], func: &GenericFunctionDef) -> String {
-    // Extract only the body (between body_start_line and body_end_line)
-    // If body_start_line/body_end_line are not set, fall back to using the whole function
-    let start_idx = if func.body_start_line > 0 {
-        (func.body_start_line.saturating_sub(1)) as usize
-    } else {
-        (func.start_line.saturating_sub(1)) as usize
-    };
-
-    let end_idx = if func.body_end_line > 0 {
-        std::cmp::min(func.body_end_line as usize, lines.len())
-    } else {
-        std::cmp::min(func.end_line as usize, lines.len())
-    };
+/// Extract full function source, including the signature.
+fn extract_function_source(lines: &[&str], func: &GenericFunctionDef) -> String {
+    let start_idx = (func.start_line.saturating_sub(1)) as usize;
+    let end_idx = std::cmp::min(func.end_line as usize, lines.len());
 
     if start_idx >= lines.len() {
         return String::new();
     }
 
     lines[start_idx..end_idx].join("\n")
+}
+
+fn blend_rust_similarity(
+    body_similarity: f64,
+    source1: &str,
+    source2: &str,
+    func1: &GenericFunctionDef,
+    func2: &GenericFunctionDef,
+) -> f64 {
+    let max_lines =
+        (func1.end_line - func1.start_line + 1).max(func2.end_line - func2.start_line + 1);
+    let signature_weight = if max_lines <= 8 { 0.35 } else { 0.2 };
+    let signature_similarity = calculate_signature_similarity(source1, source2);
+
+    (body_similarity * (1.0 - signature_weight) + signature_similarity * signature_weight)
+        .clamp(0.0, 1.0)
+}
+
+fn calculate_signature_similarity(source1: &str, source2: &str) -> f64 {
+    let tokens1 = tokenize_signature(extract_signature(source1));
+    let tokens2 = tokenize_signature(extract_signature(source2));
+
+    if tokens1.is_empty() || tokens2.is_empty() {
+        return 0.0;
+    }
+
+    let counts1 = token_counts(tokens1);
+    let counts2 = token_counts(tokens2);
+
+    let mut intersection = 0usize;
+    let mut union = 0usize;
+
+    for (token, count1) in &counts1 {
+        let count2 = counts2.get(token).copied().unwrap_or(0);
+        intersection += (*count1).min(count2);
+        union += (*count1).max(count2);
+    }
+
+    for (token, count2) in &counts2 {
+        if !counts1.contains_key(token) {
+            union += *count2;
+        }
+    }
+
+    if union == 0 {
+        0.0
+    } else {
+        intersection as f64 / union as f64
+    }
+}
+
+fn extract_signature(source: &str) -> &str {
+    source.split('{').next().unwrap_or(source).trim()
+}
+
+fn tokenize_signature(signature: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+
+    for ch in signature.chars() {
+        if ch.is_ascii_alphanumeric() {
+            current.push(ch.to_ascii_lowercase());
+        } else if !current.is_empty() {
+            tokens.push(std::mem::take(&mut current));
+        }
+    }
+
+    if !current.is_empty() {
+        tokens.push(current);
+    }
+
+    tokens
+}
+
+fn token_counts(tokens: Vec<String>) -> HashMap<String, usize> {
+    let mut counts = HashMap::new();
+    for token in tokens {
+        *counts.entry(token).or_insert(0) += 1;
+    }
+    counts
 }

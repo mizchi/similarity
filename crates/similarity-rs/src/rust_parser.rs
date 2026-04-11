@@ -409,6 +409,28 @@ fn find_first_function(node: Node) -> Option<Node> {
     None
 }
 
+fn looks_like_function_item(source: &str) -> bool {
+    let mut remainder = source.trim_start();
+
+    while let Some(line) = remainder.lines().next() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            remainder = &remainder[line.len()..];
+            remainder = remainder.strip_prefix('\n').unwrap_or(remainder);
+            continue;
+        }
+        if trimmed.starts_with("#[") {
+            remainder = &remainder[line.len()..];
+            remainder = remainder.strip_prefix('\n').unwrap_or(remainder);
+            continue;
+        }
+
+        return trimmed.contains("fn ");
+    }
+
+    false
+}
+
 impl LanguageParser for RustParser {
     fn parse(
         &mut self,
@@ -418,12 +440,13 @@ impl LanguageParser for RustParser {
         // Reset node ID counter for each parse
         self.node_id_counter = 0;
 
-        // If the source looks like a function body (starts with whitespace or directly with code),
-        // wrap it in a minimal function context for parsing
-        let wrapped_source = if source.trim_start() != source || !source.starts_with("fn ") {
-            format!("fn __dummy() {{ {source} }}")
-        } else {
+        // Wrap body snippets in a minimal function so tree-sitter can parse them.
+        // Full function items, even when indented or preceded by attributes, should be
+        // parsed as-is so the signature contributes to similarity.
+        let wrapped_source = if looks_like_function_item(source) {
             source.to_string()
+        } else {
+            format!("fn __dummy() {{ {source} }}")
         };
 
         let tree = self.parser.parse(&wrapped_source, None).ok_or_else(|| {
