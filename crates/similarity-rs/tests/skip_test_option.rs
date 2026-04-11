@@ -108,7 +108,7 @@ fn another_normal_function() {
 
     // Run with --skip-test
     let mut cmd = Command::cargo_bin("similarity-rs").unwrap();
-    cmd.arg(dir.path()).arg("--skip-test");
+    cmd.arg(dir.path()).arg("--skip-test").arg("--min-tokens").arg("1");
 
     let output = cmd.assert().success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);

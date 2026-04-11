@@ -92,7 +92,7 @@ pub fn calculate_rule_similarity(rule1: &CssRule, rule2: &CssRule) -> f64 {
     let declaration_similarity =
         calculate_declaration_similarity(&expanded_decls1, &expanded_decls2);
 
-    let weights = CssSimilarityWeights { selector: 0.4, ast: 0.0, declarations: 0.6 };
+    let weights = CssSimilarityWeights { selector: 0.05, ast: 0.0, declarations: 0.95 };
 
     weights.selector * selector_similarity
         + weights.ast * ast_similarity
@@ -135,6 +135,7 @@ fn tokenize_selector(selector: &str) -> std::collections::HashSet<String> {
 
     for part in parts {
         tokens.insert(part.to_string());
+        tokens.extend(extract_semantic_tokens(part));
 
         let classes: Vec<String> =
             part.split('.').filter(|s| !s.is_empty()).map(|s| format!(".{s}")).collect();
@@ -150,6 +151,29 @@ fn tokenize_selector(selector: &str) -> std::collections::HashSet<String> {
     }
 
     tokens
+}
+
+fn extract_semantic_tokens(part: &str) -> Vec<String> {
+    part.split(|c: char| !c.is_alphanumeric() && c != '-' && c != '_')
+        .filter(|segment| !segment.is_empty())
+        .flat_map(|segment| {
+            let mut tokens = vec![segment.to_string()];
+            let alpha_only: String = segment
+                .chars()
+                .filter(|ch| ch.is_alphabetic() || *ch == '-' || *ch == '_')
+                .collect();
+            if alpha_only.len() > 1 && alpha_only != segment {
+                tokens.push(alpha_only);
+            }
+            tokens.extend(
+                segment
+                    .split(['-', '_'])
+                    .filter(|subsegment| subsegment.len() > 1)
+                    .map(ToString::to_string),
+            );
+            tokens
+        })
+        .collect()
 }
 
 pub fn calculate_declaration_similarity(

@@ -1,7 +1,7 @@
 use clap::Parser as ClapParser;
 use ignore::WalkBuilder;
+use similarity_core::css_structure_adapter::{CssBatchComparator, CssStructDef};
 use similarity_core::language_parser::LanguageParser;
-use similarity_core::css_structure_adapter::{CssStructDef, CssBatchComparator};
 use similarity_css::{convert_to_css_rule, CssParser, DuplicateAnalyzer};
 use std::path::PathBuf;
 
@@ -42,10 +42,7 @@ struct Args {
     )]
     min_size: usize,
 
-    #[arg(
-        long,
-        help = "Use structure-based comparison instead of AST-based comparison"
-    )]
+    #[arg(long, help = "Use structure-based comparison instead of AST-based comparison")]
     use_structure_comparison: bool,
 }
 
@@ -366,7 +363,7 @@ fn analyze_with_structure_comparison(
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Convert CSS rules to CssStructDef
     let mut css_structs = Vec::new();
-    
+
     for (file_path, rule) in all_rules {
         let css_struct = CssStructDef {
             selector: rule.selector.clone(),
@@ -379,12 +376,12 @@ fn analyze_with_structure_comparison(
         };
         css_structs.push(css_struct);
     }
-    
+
     // Use batch comparator for efficient comparison
     let mut batch_comparator = CssBatchComparator::new();
     batch_comparator.group_by_fingerprint(css_structs.clone());
     let similar_rules = batch_comparator.find_similar_rules(threshold);
-    
+
     // Output results
     match output_format {
         "json" => {
@@ -397,24 +394,27 @@ fn analyze_with_structure_comparison(
             output_structure_standard(&similar_rules, threshold);
         }
     }
-    
+
     Ok(())
 }
 
 fn output_structure_standard(
-    similar_rules: &[(similarity_core::structure_comparator::Structure, 
-                     similarity_core::structure_comparator::Structure, f64)],
+    similar_rules: &[(
+        similarity_core::structure_comparator::Structure,
+        similarity_core::structure_comparator::Structure,
+        f64,
+    )],
     threshold: f64,
 ) {
     println!("\n=== CSS Structure Similarity Analysis Results ===");
-    
+
     if similar_rules.is_empty() {
         println!("\nNo similar CSS rules found with threshold >= {threshold}");
         return;
     }
-    
+
     println!("\n## Similar CSS Rules Found: {}", similar_rules.len());
-    
+
     for (i, (rule1, rule2, similarity)) in similar_rules.iter().enumerate() {
         println!(
             "\n{}. {} and {} (similarity: {:.2}%)",
@@ -435,26 +435,32 @@ fn output_structure_standard(
             rule2.metadata.location.start_line,
             rule2.metadata.location.end_line
         );
-        println!("   Properties in common: {}", 
-            rule1.members.iter()
+        println!(
+            "   Properties in common: {}",
+            rule1
+                .members
+                .iter()
                 .filter(|m1| rule2.members.iter().any(|m2| m1.name == m2.name))
                 .count()
         );
     }
-    
+
     println!("\n## Summary");
     println!("Total similar rule pairs found: {}", similar_rules.len());
     println!("Similarity threshold: {threshold}");
 }
 
 fn output_structure_vscode(
-    similar_rules: &[(similarity_core::structure_comparator::Structure, 
-                     similarity_core::structure_comparator::Structure, f64)],
+    similar_rules: &[(
+        similarity_core::structure_comparator::Structure,
+        similarity_core::structure_comparator::Structure,
+        f64,
+    )],
 ) {
     for (rule1, rule2, similarity) in similar_rules {
         let file1 = rule1.identifier.namespace.as_deref().unwrap_or("unknown");
         let file2 = rule2.identifier.namespace.as_deref().unwrap_or("unknown");
-        
+
         println!(
             "{}:{}:1: warning: Similar to {} ({:.0}% similarity) at {}:{}",
             file1,
@@ -468,13 +474,16 @@ fn output_structure_vscode(
 }
 
 fn output_structure_json(
-    similar_rules: &[(similarity_core::structure_comparator::Structure, 
-                     similarity_core::structure_comparator::Structure, f64)],
+    similar_rules: &[(
+        similarity_core::structure_comparator::Structure,
+        similarity_core::structure_comparator::Structure,
+        f64,
+    )],
 ) -> Result<(), Box<dyn std::error::Error>> {
     use serde_json::json;
-    
+
     let mut pairs = Vec::new();
-    
+
     for (rule1, rule2, similarity) in similar_rules {
         pairs.push(json!({
             "similarity": similarity,
@@ -494,12 +503,12 @@ fn output_structure_json(
             }
         }));
     }
-    
+
     let output = json!({
         "similar_rules": pairs,
         "total_pairs": similar_rules.len(),
     });
-    
+
     println!("{}", serde_json::to_string_pretty(&output)?);
     Ok(())
 }

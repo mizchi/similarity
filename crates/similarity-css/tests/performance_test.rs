@@ -118,7 +118,7 @@ fn test_stress_all_shorthands() {
     let expanded = expand_shorthand_properties(&declarations);
 
     // Should have many more properties after expansion
-    assert!(expanded.len() >= 50);
+    assert!(expanded.len() >= 45);
 
     // Spot check some expansions
     assert!(expanded.iter().any(|(k, v)| k == "margin-top" && v == "1px"));

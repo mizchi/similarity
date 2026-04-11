@@ -5,10 +5,10 @@ use std::collections::HashMap;
 pub struct Structure {
     /// 識別子（名前、種類、名前空間）
     pub identifier: StructureIdentifier,
-    
+
     /// メンバー（プロパティ、フィールド、メソッドなど）
     pub members: Vec<StructureMember>,
-    
+
     /// メタデータ（位置情報、ジェネリクス、継承など）
     pub metadata: StructureMetadata,
 }
@@ -123,30 +123,26 @@ pub struct StructureComparator {
 
 impl StructureComparator {
     pub fn new(options: ComparisonOptions) -> Self {
-        Self {
-            options,
-            fingerprint_cache: HashMap::new(),
-        }
+        Self { options, fingerprint_cache: HashMap::new() }
     }
-    
+
     pub fn compare(&mut self, s1: &Structure, s2: &Structure) -> StructureComparisonResult {
         // 識別子の類似性
         let identifier_similarity = self.compare_identifiers(&s1.identifier, &s2.identifier);
-        
+
         // メンバーの類似性と詳細
-        let (member_similarity, member_matches, differences) = 
+        let (member_similarity, member_matches, differences) =
             self.compare_members(&s1.members, &s2.members);
-        
+
         // メンバー数の違いによるペナルティを計算
         let size_penalty = self.calculate_size_penalty(s1.members.len(), s2.members.len());
-        
+
         // 全体的な類似性を計算（サイズペナルティを適用）
-        let base_similarity = 
-            self.options.name_weight * identifier_similarity +
-            self.options.structure_weight * member_similarity;
-        
+        let base_similarity = self.options.name_weight * identifier_similarity
+            + self.options.structure_weight * member_similarity;
+
         let overall_similarity = base_similarity * size_penalty;
-        
+
         StructureComparisonResult {
             overall_similarity,
             identifier_similarity,
@@ -155,17 +151,17 @@ impl StructureComparator {
             differences,
         }
     }
-    
+
     fn calculate_size_penalty(&self, size1: usize, size2: usize) -> f64 {
         let min_size = size1.min(size2) as f64;
         let max_size = size1.max(size2) as f64;
-        
+
         if max_size == 0.0 {
             return 1.0;
         }
-        
+
         let ratio = min_size / max_size;
-        
+
         if self.options.strict_size_check {
             // 厳格モード: より強いペナルティ
             if ratio < 0.3 {
@@ -190,17 +186,17 @@ impl StructureComparator {
             }
         }
     }
-    
+
     fn compare_identifiers(&self, id1: &StructureIdentifier, id2: &StructureIdentifier) -> f64 {
         // 種類が異なる場合はペナルティ
         let kind_factor = if id1.kind == id2.kind { 1.0 } else { 0.8 };
-        
+
         // 名前の類似性
         let name_similarity = calculate_string_similarity(&id1.name, &id2.name);
-        
+
         name_similarity * kind_factor
     }
-    
+
     fn compare_members(
         &self,
         members1: &[StructureMember],
@@ -209,24 +205,24 @@ impl StructureComparator {
         let mut matches = Vec::new();
         let mut matched_indices1 = vec![false; members1.len()];
         let mut matched_indices2 = vec![false; members2.len()];
-        
+
         // 各メンバーの最良マッチを見つける
         for (i, m1) in members1.iter().enumerate() {
             let mut best_match = None;
             let mut best_score = 0.0;
-            
+
             for (j, m2) in members2.iter().enumerate() {
                 if matched_indices2[j] {
                     continue;
                 }
-                
+
                 let score = self.compare_single_member(m1, m2);
                 if score > best_score && score >= self.options.threshold {
                     best_score = score;
                     best_match = Some(j);
                 }
             }
-            
+
             if let Some(j) = best_match {
                 matched_indices1[i] = true;
                 matched_indices2[j] = true;
@@ -237,7 +233,7 @@ impl StructureComparator {
                 });
             }
         }
-        
+
         // 差分を収集
         let missing_members: Vec<String> = members1
             .iter()
@@ -245,14 +241,14 @@ impl StructureComparator {
             .filter(|(i, _)| !matched_indices1[*i])
             .map(|(_, m)| m.name.clone())
             .collect();
-        
+
         let extra_members: Vec<String> = members2
             .iter()
             .enumerate()
             .filter(|(i, _)| !matched_indices2[*i])
             .map(|(_, m)| m.name.clone())
             .collect();
-        
+
         let type_mismatches: Vec<(String, String, String)> = matches
             .iter()
             .filter_map(|m| {
@@ -265,16 +261,16 @@ impl StructureComparator {
                 }
             })
             .collect();
-        
+
         // 類似性スコアを計算
         // マッチしたメンバー数と最小メンバー数の両方を考慮
         let min_members = members1.len().min(members2.len()) as f64;
         let max_members = members1.len().max(members2.len()) as f64;
-        
+
         let similarity = if max_members > 0.0 {
             // マッチしたメンバーの割合を計算
             let match_ratio = matches.len() as f64 / max_members;
-            
+
             // すべてのメンバーがマッチしているかチェック
             if matches.len() as f64 >= min_members && min_members == max_members {
                 // 完全一致
@@ -289,22 +285,22 @@ impl StructureComparator {
         } else {
             1.0
         };
-        
-        let differences = StructureDifferences {
-            missing_members,
-            extra_members,
-            type_mismatches,
-        };
-        
+
+        let differences = StructureDifferences { missing_members, extra_members, type_mismatches };
+
         (similarity, matches, differences)
     }
-    
+
     fn compare_single_member(&self, m1: &StructureMember, m2: &StructureMember) -> f64 {
         let name_sim = calculate_string_similarity(&m1.name, &m2.name);
-        
+
         let type_sim = match self.options.member_comparison {
             MemberComparisonStrategy::Exact => {
-                if m1.value_type == m2.value_type { 1.0 } else { 0.0 }
+                if m1.value_type == m2.value_type {
+                    1.0
+                } else {
+                    0.0
+                }
             }
             MemberComparisonStrategy::Normalized => {
                 calculate_type_similarity(&m1.value_type, &m2.value_type)
@@ -314,18 +310,21 @@ impl StructureComparator {
                 calculate_type_similarity(&m1.value_type, &m2.value_type)
             }
         };
-        
+
         // 修飾子の一致度
         let modifier_sim = calculate_modifier_similarity(&m1.modifiers, &m2.modifiers);
-        
+
         // 重み付き平均
         0.4 * name_sim + 0.5 * type_sim + 0.1 * modifier_sim
     }
-    
+
     pub fn generate_fingerprint(&mut self, structure: &Structure) -> String {
-        let key = format!("{}::{}", structure.identifier.namespace.as_deref().unwrap_or(""), 
-                         structure.identifier.name);
-        
+        let key = format!(
+            "{}::{}",
+            structure.identifier.namespace.as_deref().unwrap_or(""),
+            structure.identifier.name
+        );
+
         self.fingerprint_cache
             .entry(key)
             .or_insert_with(|| compute_structure_fingerprint(structure))
@@ -336,10 +335,10 @@ impl StructureComparator {
 /// 構造のフィンガープリントを計算
 pub fn compute_structure_fingerprint(structure: &Structure) -> String {
     let mut parts = Vec::new();
-    
+
     // 種類
     parts.push(format!("kind:{:?}", structure.identifier.kind));
-    
+
     // メンバー数（より細かい分類）
     let member_count = structure.members.len();
     let member_category = match member_count {
@@ -352,27 +351,27 @@ pub fn compute_structure_fingerprint(structure: &Structure) -> String {
     };
     parts.push(format!("size:{}", member_category));
     parts.push(format!("members:{}", member_count));
-    
+
     // 型の分布を計算
     let mut type_counts: HashMap<String, usize> = HashMap::new();
     for member in &structure.members {
         let normalized_type = normalize_type(&member.value_type);
         *type_counts.entry(normalized_type).or_insert(0) += 1;
     }
-    
+
     // ソートして一貫性を保つ
     let mut type_entries: Vec<_> = type_counts.iter().collect();
     type_entries.sort_by_key(|(k, _)| k.as_str());
-    
+
     for (type_name, count) in type_entries {
         parts.push(format!("{}:{}", type_name, count));
     }
-    
+
     // ジェネリクスがあれば追加
     if !structure.metadata.generics.is_empty() {
         parts.push(format!("generics:{}", structure.metadata.generics.len()));
     }
-    
+
     parts.join(",")
 }
 
@@ -380,14 +379,14 @@ pub fn compute_structure_fingerprint(structure: &Structure) -> String {
 pub fn should_compare_fingerprints(fp1: &str, fp2: &str) -> bool {
     let parts1 = parse_fingerprint(fp1);
     let parts2 = parse_fingerprint(fp2);
-    
+
     // 種類が違う場合は比較しない（TypeScriptInterfaceとRustStructなど）
     if let (Some(kind1), Some(kind2)) = (parts1.get("kind"), parts2.get("kind")) {
         if kind1 != kind2 {
             return false;
         }
     }
-    
+
     // サイズカテゴリが大きく異なる場合は比較しない
     if let (Some(size1), Some(size2)) = (parts1.get("size"), parts2.get("size")) {
         let size_diff = size_category_distance(size1, size2);
@@ -395,7 +394,7 @@ pub fn should_compare_fingerprints(fp1: &str, fp2: &str) -> bool {
             return false;
         }
     }
-    
+
     // メンバー数が大きく異なる場合は比較しない
     if let (Some(members1), Some(members2)) = (parts1.get("members"), parts2.get("members")) {
         if let (Ok(count1), Ok(count2)) = (members1.parse::<usize>(), members2.parse::<usize>()) {
@@ -406,7 +405,7 @@ pub fn should_compare_fingerprints(fp1: &str, fp2: &str) -> bool {
             }
         }
     }
-    
+
     true
 }
 
@@ -423,7 +422,7 @@ fn size_category_distance(cat1: &str, cat2: &str) -> usize {
     let categories = ["empty", "single", "small", "medium", "large", "huge"];
     let pos1 = categories.iter().position(|&c| c == cat1).unwrap_or(0);
     let pos2 = categories.iter().position(|&c| c == cat2).unwrap_or(0);
-    if pos1 > pos2 { pos1 - pos2 } else { pos2 - pos1 }
+    pos1.abs_diff(pos2)
 }
 
 /// 型を正規化
@@ -432,7 +431,7 @@ fn normalize_type(type_str: &str) -> String {
     if type_str.contains("[]") || type_str.contains("Array") {
         return "array".to_string();
     }
-    
+
     match type_str {
         s if s.contains("string") => "string".to_string(),
         s if s.contains("number") => "number".to_string(),
@@ -447,20 +446,20 @@ fn calculate_string_similarity(s1: &str, s2: &str) -> f64 {
     if s1 == s2 {
         return 1.0;
     }
-    
+
     let len1 = s1.len();
     let len2 = s2.len();
     let max_len = len1.max(len2) as f64;
-    
+
     if max_len == 0.0 {
         return 1.0;
     }
-    
+
     // 簡単なレーベンシュタイン距離の近似
     let common_prefix = s1.chars().zip(s2.chars()).take_while(|(a, b)| a == b).count();
     let common_suffix = s1.chars().rev().zip(s2.chars().rev()).take_while(|(a, b)| a == b).count();
     let common = (common_prefix + common_suffix).min(len1.min(len2));
-    
+
     common as f64 / max_len
 }
 
@@ -469,12 +468,12 @@ fn calculate_type_similarity(t1: &str, t2: &str) -> f64 {
     if t1 == t2 {
         return 1.0;
     }
-    
+
     let norm1 = normalize_type(t1);
     let norm2 = normalize_type(t2);
-    
+
     if norm1 == norm2 {
-        0.8  // 正規化後に一致
+        0.8 // 正規化後に一致
     } else {
         0.0
     }
@@ -485,12 +484,12 @@ fn calculate_modifier_similarity(m1: &[String], m2: &[String]) -> f64 {
     if m1.is_empty() && m2.is_empty() {
         return 1.0;
     }
-    
+
     let set1: HashMap<_, _> = m1.iter().map(|s| (s.as_str(), true)).collect();
     let set2: HashMap<_, _> = m2.iter().map(|s| (s.as_str(), true)).collect();
-    
+
     let intersection = set1.keys().filter(|k| set2.contains_key(*k)).count();
     let union = (set1.len() + set2.len() - intersection).max(1);
-    
+
     intersection as f64 / union as f64
 }

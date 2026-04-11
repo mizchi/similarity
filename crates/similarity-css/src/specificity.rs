@@ -68,6 +68,7 @@ pub fn calculate_specificity(selector: &str) -> Specificity {
 
         // Count pseudo-classes (excluding pseudo-elements)
         classes += count_pseudo_classes(&part);
+        classes = classes.saturating_sub(count_functional_pseudo_wrappers(&part));
 
         // Count pseudo-elements
         types += count_pseudo_elements(&part);
@@ -172,6 +173,13 @@ fn count_pseudo_classes(part: &str) -> u32 {
     }
 
     count
+}
+
+fn count_functional_pseudo_wrappers(part: &str) -> u32 {
+    [":not", ":is", ":has", ":where"]
+        .into_iter()
+        .map(|pseudo| part.matches(pseudo).count() as u32)
+        .sum()
 }
 
 /// Count pseudo-elements (double colon)
@@ -291,6 +299,11 @@ mod tests {
         assert_eq!(calculate_specificity("p::first-line"), Specificity::new(0, 0, 2));
 
         assert_eq!(calculate_specificity("input[type='text']"), Specificity::new(0, 1, 1));
+
+        assert_eq!(
+            calculate_specificity(".link:focus:not(:focus-visible)"),
+            Specificity::new(0, 3, 0)
+        );
     }
 
     #[test]

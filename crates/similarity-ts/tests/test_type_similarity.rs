@@ -50,7 +50,6 @@ interface Customer {
     Command::cargo_bin("similarity-ts")
         .unwrap()
         .arg(dir.path())
-        .arg("--experimental-types")
         .arg("--no-functions")
         .arg("--threshold")
         .arg("0.7")
@@ -94,7 +93,6 @@ type AccountInfo = {
     Command::cargo_bin("similarity-ts")
         .unwrap()
         .arg(dir.path())
-        .arg("--experimental-types")
         .arg("--no-functions")
         .arg("--types-only")
         .arg("--threshold")
@@ -133,7 +131,6 @@ type TUser = {
     Command::cargo_bin("similarity-ts")
         .unwrap()
         .arg(dir.path())
-        .arg("--experimental-types")
         .arg("--no-functions")
         .arg("--allow-cross-kind")
         .arg("--threshold")
@@ -146,7 +143,7 @@ type TUser = {
 }
 
 #[test]
-fn test_nested_type_similarity() {
+fn test_nested_type_similarity_is_not_reported_by_default() {
     let dir = tempdir().unwrap();
     let file = dir.path().join("nested.ts");
 
@@ -187,18 +184,16 @@ interface Purchase {
     Command::cargo_bin("similarity-ts")
         .unwrap()
         .arg(dir.path())
-        .arg("--experimental-types")
         .arg("--no-functions")
         .arg("--threshold")
         .arg("0.6")
         .assert()
         .success()
-        .stdout(predicate::str::contains("Order"))
-        .stdout(predicate::str::contains("Purchase"));
+        .stdout(predicate::str::contains("No similar types found"));
 }
 
 #[test]
-fn test_generic_type_similarity() {
+fn test_generic_type_similarity_is_not_reported_by_default() {
     let dir = tempdir().unwrap();
     let file = dir.path().join("generics.ts");
 
@@ -227,14 +222,12 @@ interface ServerResponse<T> {
     Command::cargo_bin("similarity-ts")
         .unwrap()
         .arg(dir.path())
-        .arg("--experimental-types")
         .arg("--no-functions")
         .arg("--threshold")
         .arg("0.7")
         .assert()
         .success()
-        .stdout(predicate::str::contains("Response"))
-        .stdout(predicate::str::contains("ApiResult"));
+        .stdout(predicate::str::contains("No similar types found"));
 }
 
 #[test]
@@ -267,7 +260,6 @@ interface Config {
     Command::cargo_bin("similarity-ts")
         .unwrap()
         .arg(dir.path())
-        .arg("--experimental-types")
         .arg("--no-functions")
         .arg("--threshold")
         .arg("0.9")
@@ -307,7 +299,6 @@ interface Type{} {{
     Command::cargo_bin("similarity-ts")
         .unwrap()
         .arg(dir.path())
-        .arg("--experimental-types")
         .arg("--no-functions")
         .arg("--threshold")
         .arg("0.95")

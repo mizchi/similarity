@@ -134,7 +134,7 @@ pub fn simple_flatten_scss(
             let parts: Vec<&str> = trimmed.splitn(2, ':').collect();
             if parts.len() == 2 {
                 let property = parts[0].trim();
-                let value = parts[1].trim_end_matches(';').trim();
+                let value = strip_inline_comment(parts[1]).trim_end_matches(';').trim();
                 if !property.is_empty() && !value.is_empty() && !property.starts_with('@') {
                     current_declarations.push((property.to_string(), value.to_string()));
                 }
@@ -173,6 +173,14 @@ pub fn simple_flatten_scss(
     }
 
     Ok(rules)
+}
+
+fn strip_inline_comment(value: &str) -> &str {
+    value
+        .find(" //")
+        .or_else(|| value.find("\t//"))
+        .map(|comment_start| &value[..comment_start])
+        .unwrap_or(value)
 }
 
 fn process_ampersand_selector(parent: &str, selector: &str) -> String {
