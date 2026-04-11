@@ -5,7 +5,7 @@ use crate::parallel::{
     load_files_parallel,
 };
 use ignore::WalkBuilder;
-use similarity_core::TSEDOptions;
+use similarity_core::{extract_functions, TSEDOptions};
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -267,6 +267,7 @@ pub fn check_paths(
     filter_function: Option<&String>,
     filter_function_body: Option<&String>,
     exclude_patterns: &[String],
+    show_ignored: bool,
 ) -> anyhow::Result<usize> {
     let default_extensions = vec!["ts", "tsx", "js", "jsx", "mjs", "cjs", "mts", "cts"];
     let exts: Vec<&str> =
@@ -394,5 +395,39 @@ pub fn check_paths(
     let duplicate_count =
         display_all_results(all_results, print, filter_function, filter_function_body);
 
+    if show_ignored {
+        report_ignored_functions(&files);
+    }
+
     Ok(duplicate_count)
+}
+
+fn report_ignored_functions(files: &[PathBuf]) {
+    let mut ignored = Vec::new();
+
+    for file in files {
+        let Ok(content) = fs::read_to_string(file) else {
+            continue;
+        };
+        let filename = file.to_string_lossy();
+        let Ok(functions) = extract_functions(&filename, &content) else {
+            continue;
+        };
+
+        ignored.extend(
+            functions
+                .into_iter()
+                .filter(|function| function.has_ignore_directive)
+                .map(|function| (file.display().to_string(), function.name, function.start_line)),
+        );
+    }
+
+    if ignored.is_empty() {
+        return;
+    }
+
+    println!("Ignored {} function(s) via similarity-ignore directive:", ignored.len());
+    for (file, name, line) in ignored {
+        println!("  {}:{} {}", file, line, name);
+    }
 }

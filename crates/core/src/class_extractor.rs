@@ -3,6 +3,8 @@ use oxc_ast::ast::{ClassElement, MethodDefinitionKind, Statement};
 use oxc_parser::Parser;
 use oxc_span::SourceType;
 
+use crate::ignore_directive::has_similarity_ignore_directive;
+
 #[derive(Debug, Clone)]
 pub struct ClassDefinition {
     pub name: String,
@@ -15,6 +17,7 @@ pub struct ClassDefinition {
     pub end_line: usize,
     pub file_path: String,
     pub is_abstract: bool,
+    pub has_ignore_directive: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -396,6 +399,7 @@ impl ClassExtractor {
             end_line,
             file_path: self.file_path.clone(),
             is_abstract: class.r#abstract,
+            has_ignore_directive: has_similarity_ignore_directive(&self.source_text, start_line),
         }
     }
 
@@ -459,4 +463,31 @@ pub fn extract_classes_from_files(files: &[(String, String)]) -> Vec<ClassDefini
     }
 
     all_classes
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_classes_marks_similarity_ignore_directives() {
+        let source = r#"
+class ActiveService {
+    run(): void {}
+}
+
+// similarity-ignore
+class IgnoredService {
+    run(): void {}
+}
+"#;
+
+        let classes = extract_classes_from_code(source, "test.ts").unwrap();
+
+        let active = classes.iter().find(|class| class.name == "ActiveService").unwrap();
+        assert!(!active.has_ignore_directive);
+
+        let ignored = classes.iter().find(|class| class.name == "IgnoredService").unwrap();
+        assert!(ignored.has_ignore_directive);
+    }
 }

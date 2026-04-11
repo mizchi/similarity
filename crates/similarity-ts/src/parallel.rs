@@ -24,7 +24,10 @@ pub fn load_files_parallel(files: &[PathBuf]) -> Vec<FileData> {
                     let filename = file.to_string_lossy();
                     // Extract functions, skip if parse error
                     match extract_functions(&filename, &content) {
-                        Ok(functions) => Some(FileData { path: file.clone(), content, functions }),
+                        Ok(mut functions) => {
+                            functions.retain(|function| !function.has_ignore_directive);
+                            Some(FileData { path: file.clone(), content, functions })
+                        }
                         Err(_) => None, // Skip files with parse errors
                     }
                 }

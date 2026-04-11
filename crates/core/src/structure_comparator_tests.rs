@@ -128,6 +128,7 @@ mod tests {
             start_line: 1,
             end_line: 5,
             file_path: "test.ts".to_string(),
+            has_ignore_directive: false,
         };
 
         let type2 = TypeDefinition {
@@ -144,6 +145,7 @@ mod tests {
             start_line: 10,
             end_line: 15,
             file_path: "test.ts".to_string(),
+            has_ignore_directive: false,
         };
 
         let result = comparator.compare_types(&type1, &type2);

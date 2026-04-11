@@ -94,6 +94,7 @@ fn type_literal_to_type_def(literal: &TypeLiteralDefinition) -> TypeDefinition {
         start_line: literal.start_line,
         end_line: literal.end_line,
         file_path: literal.file_path.clone(),
+        has_ignore_directive: false,
     }
 }
 
