@@ -119,9 +119,18 @@ jobs:
           shasum -a 256 *.tar.gz > SHA256SUMS.txt
 
       - name: Publish release assets
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.vars.outputs.tag }}
-          files: |
-            dist/*.tar.gz
-            dist/SHA256SUMS.txt
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ steps.vars.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" dist/*.tar.gz dist/SHA256SUMS.txt --clobber
+          else
+            gh release create "$RELEASE_TAG" \
+              --title "$RELEASE_TAG" \
+              --generate-notes \
+              dist/*.tar.gz dist/SHA256SUMS.txt
+          fi
