@@ -1,107 +1,25 @@
 use anyhow::Result;
 use clap::Parser;
+use similarity_core::ConfigLoader;
 
 mod check;
 mod check_types;
+mod config;
 mod parallel;
 mod rust_parser;
 
-#[derive(Parser)]
-#[command(name = "similarity-rs")]
-#[command(about = "Rust code similarity analyzer")]
-#[command(version)]
-struct Cli {
-    /// Paths to analyze (files or directories)
-    #[arg(default_value = ".")]
-    paths: Vec<String>,
-
-    /// Print code in output
-    #[arg(short, long)]
-    print: bool,
-
-    /// Similarity threshold (0.0-1.0)
-    #[arg(short, long, default_value = "0.85")]
-    threshold: f64,
-
-    /// File extensions to check
-    #[arg(short, long, value_delimiter = ',')]
-    extensions: Option<Vec<String>>,
-
-    /// Minimum lines for functions to be considered
-    #[arg(short, long, default_value = "3")]
-    min_lines: Option<u32>,
-
-    /// Minimum tokens for functions to be considered
-    #[arg(long, default_value = "30")]
-    min_tokens: Option<u32>,
-
-    /// Rename cost for APTED algorithm
-    #[arg(short, long, default_value = "0.3")]
-    rename_cost: f64,
-
-    /// Disable size penalty for very different sized functions
-    #[arg(long)]
-    no_size_penalty: bool,
-
-    /// Filter functions by name (substring match)
-    #[arg(long)]
-    filter_function: Option<String>,
-
-    /// Filter functions by body content (substring match)
-    #[arg(long)]
-    filter_function_body: Option<String>,
-
-    /// Disable fast mode with bloom filter pre-filtering
-    #[arg(long)]
-    no_fast: bool,
-
-    /// Exclude directories matching the given patterns (can be specified multiple times)
-    #[arg(long)]
-    exclude: Vec<String>,
-
-    /// Skip test functions (functions starting with 'test_' or annotated with #[test])
-    #[arg(long)]
-    skip_test: bool,
-
-    /// Enable experimental overlap detection mode
-    #[arg(long = "experimental-overlap")]
-    overlap: bool,
-
-    /// Minimum window size for overlap detection (number of nodes)
-    #[arg(long, default_value = "8")]
-    overlap_min_window: u32,
-
-    /// Maximum window size for overlap detection (number of nodes)
-    #[arg(long, default_value = "25")]
-    overlap_max_window: u32,
-
-    /// Size tolerance for overlap detection (0.0-1.0)
-    #[arg(long, default_value = "0.25")]
-    overlap_size_tolerance: f64,
-
-    /// Exit with code 1 if duplicates are found
-    #[arg(long)]
-    fail_on_duplicates: bool,
-
-    /// Enable type similarity checking for structs and enums (experimental)
-    #[arg(long = "experimental-types")]
-    types: bool,
-
-    /// Disable function similarity checking
-    #[arg(long = "no-functions")]
-    no_functions: bool,
-
-    /// Use new generalized structure comparison framework (experimental)
-    #[arg(long)]
-    use_structure_comparison: bool,
-}
+use config::{Cli, Config, ResolvedConfig};
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+    let paths = cli.paths.clone();
+    let print = cli.print;
+    let config = Config::find_and_load();
+    let resolved = ResolvedConfig::from(cli, config);
 
-    let functions_enabled = !cli.no_functions;
-    let types_enabled = cli.types;
-    let overlap_enabled = cli.overlap;
+    let functions_enabled = !resolved.no_functions;
+    let types_enabled = resolved.types;
+    let overlap_enabled = resolved.overlap;
 
     // Validate that at least one analyzer is enabled
     if !functions_enabled && !types_enabled && !overlap_enabled {
@@ -118,19 +36,19 @@ fn main() -> Result<()> {
     if functions_enabled {
         println!("=== Function Similarity ===");
         let duplicate_count = check::check_paths(
-            cli.paths.clone(),
-            cli.threshold,
-            cli.rename_cost,
-            cli.extensions.as_ref(),
-            cli.min_lines.unwrap_or(3),
-            cli.min_tokens,
-            cli.no_size_penalty,
-            cli.print,
-            !cli.no_fast,
-            cli.filter_function.as_ref(),
-            cli.filter_function_body.as_ref(),
-            &cli.exclude,
-            cli.skip_test,
+            paths.clone(),
+            resolved.threshold,
+            resolved.rename_cost,
+            resolved.extensions.as_ref(),
+            resolved.min_lines,
+            resolved.min_tokens,
+            resolved.no_size_penalty,
+            print,
+            !resolved.no_fast,
+            resolved.filter_function.as_ref(),
+            resolved.filter_function_body.as_ref(),
+            &resolved.exclude,
+            resolved.skip_test,
         )?;
         total_duplicates += duplicate_count;
     }
@@ -143,12 +61,12 @@ fn main() -> Result<()> {
     if types_enabled {
         println!("=== Type Similarity (Structs & Enums) ===");
         let type_duplicate_count = check_types::check_types(
-            cli.paths.clone(),
-            cli.threshold,
-            cli.extensions.as_ref(),
-            cli.print,
-            &cli.exclude,
-            cli.use_structure_comparison,
+            paths.clone(),
+            resolved.threshold,
+            resolved.extensions.as_ref(),
+            print,
+            &resolved.exclude,
+            resolved.use_structure_comparison,
         )?;
         total_duplicates += type_duplicate_count;
     }
@@ -161,20 +79,20 @@ fn main() -> Result<()> {
     if overlap_enabled {
         println!("=== Overlap Detection ===");
         let overlap_duplicate_count = check_overlaps(
-            cli.paths,
-            cli.threshold,
-            cli.extensions.as_ref(),
-            cli.print,
-            cli.overlap_min_window,
-            cli.overlap_max_window,
-            cli.overlap_size_tolerance,
-            &cli.exclude,
+            paths,
+            resolved.threshold,
+            resolved.extensions.as_ref(),
+            print,
+            resolved.overlap_min_window,
+            resolved.overlap_max_window,
+            resolved.overlap_size_tolerance,
+            &resolved.exclude,
         )?;
         total_duplicates += overlap_duplicate_count;
     }
 
     // Exit with code 1 if duplicates found and --fail-on-duplicates is set
-    if cli.fail_on_duplicates && total_duplicates > 0 {
+    if resolved.fail_on_duplicates && total_duplicates > 0 {
         std::process::exit(1);
     }
 

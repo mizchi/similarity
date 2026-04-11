@@ -1,6 +1,7 @@
 use oxc_ast::ast::*;
 use oxc_span::Span;
 
+use crate::ignore_directive::has_similarity_ignore_directive;
 use crate::parser::parse_and_convert_to_tree;
 use crate::tsed::{calculate_tsed, TSEDOptions};
 
@@ -33,6 +34,7 @@ pub struct FunctionDefinition {
     pub class_name: Option<String>,
     pub parent_function: Option<String>,
     pub node_count: Option<u32>,
+    pub has_ignore_directive: bool,
 }
 
 impl FunctionDefinition {
@@ -117,16 +119,21 @@ fn extract_from_statement(stmt: &Statement, ctx: &mut ExtractionContext) {
             if let Some(name) = &func.id {
                 let func_name = name.name.to_string();
                 let params = extract_parameters(&func.params);
+                let start_line = get_line_number(func.span.start, ctx.source_text);
                 ctx.functions.push(FunctionDefinition {
                     name: func_name.clone(),
                     function_type: FunctionType::Function,
                     parameters: params,
                     body_span: func.span,
-                    start_line: get_line_number(func.span.start, ctx.source_text),
+                    start_line,
                     end_line: get_line_number(func.span.end, ctx.source_text),
                     class_name: None,
                     parent_function: ctx.parent_function.clone(),
                     node_count: count_function_nodes(func.span, ctx.source_text),
+                    has_ignore_directive: has_similarity_ignore_directive(
+                        ctx.source_text,
+                        start_line as usize,
+                    ),
                 });
 
                 // Extract nested functions within the function body
@@ -163,17 +170,22 @@ fn extract_from_statement(stmt: &Statement, ctx: &mut ExtractionContext) {
                     } else {
                         method_name.clone()
                     };
+                    let start_line = get_line_number(method.span.start, ctx.source_text);
 
                     ctx.functions.push(FunctionDefinition {
                         name: method_name.clone(),
                         function_type,
                         parameters: params,
                         body_span: method.span,
-                        start_line: get_line_number(method.span.start, ctx.source_text),
+                        start_line,
                         end_line: get_line_number(method.span.end, ctx.source_text),
                         class_name: class_name.clone(),
                         parent_function: ctx.parent_function.clone(),
                         node_count: count_function_nodes(method.span, ctx.source_text),
+                        has_ignore_directive: has_similarity_ignore_directive(
+                            ctx.source_text,
+                            start_line as usize,
+                        ),
                     });
 
                     // Extract nested functions within method body
@@ -194,16 +206,21 @@ fn extract_from_statement(stmt: &Statement, ctx: &mut ExtractionContext) {
                     if let BindingPatternKind::BindingIdentifier(ident) = &decl.id.kind {
                         let params = extract_parameters(&arrow.params);
                         let arrow_name = ident.name.to_string();
+                        let start_line = get_line_number(arrow.span.start, ctx.source_text);
                         ctx.functions.push(FunctionDefinition {
                             name: arrow_name.clone(),
                             function_type: FunctionType::Arrow,
                             parameters: params,
                             body_span: arrow.span,
-                            start_line: get_line_number(arrow.span.start, ctx.source_text),
+                            start_line,
                             end_line: get_line_number(arrow.span.end, ctx.source_text),
                             class_name: None,
                             parent_function: ctx.parent_function.clone(),
                             node_count: count_function_nodes(arrow.span, ctx.source_text),
+                            has_ignore_directive: has_similarity_ignore_directive(
+                                ctx.source_text,
+                                start_line as usize,
+                            ),
                         });
 
                         // Extract nested functions within arrow function body
@@ -231,16 +248,21 @@ fn extract_from_statement(stmt: &Statement, ctx: &mut ExtractionContext) {
                     .unwrap_or_else(|| "default".to_string());
                 let params = extract_parameters(&func.params);
                 let func_name = name.clone();
+                let start_line = get_line_number(func.span.start, ctx.source_text);
                 ctx.functions.push(FunctionDefinition {
                     name: func_name.clone(),
                     function_type: FunctionType::Function,
                     parameters: params,
                     body_span: func.span,
-                    start_line: get_line_number(func.span.start, ctx.source_text),
+                    start_line,
                     end_line: get_line_number(func.span.end, ctx.source_text),
                     class_name: None,
                     parent_function: ctx.parent_function.clone(),
                     node_count: count_function_nodes(func.span, ctx.source_text),
+                    has_ignore_directive: has_similarity_ignore_directive(
+                        ctx.source_text,
+                        start_line as usize,
+                    ),
                 });
 
                 // Extract nested functions within the function body
@@ -262,16 +284,21 @@ fn extract_from_declaration(decl: &Declaration, ctx: &mut ExtractionContext) {
             if let Some(name) = &func.id {
                 let func_name = name.name.to_string();
                 let params = extract_parameters(&func.params);
+                let start_line = get_line_number(func.span.start, ctx.source_text);
                 ctx.functions.push(FunctionDefinition {
                     name: func_name.clone(),
                     function_type: FunctionType::Function,
                     parameters: params,
                     body_span: func.span,
-                    start_line: get_line_number(func.span.start, ctx.source_text),
+                    start_line,
                     end_line: get_line_number(func.span.end, ctx.source_text),
                     class_name: None,
                     parent_function: ctx.parent_function.clone(),
                     node_count: count_function_nodes(func.span, ctx.source_text),
+                    has_ignore_directive: has_similarity_ignore_directive(
+                        ctx.source_text,
+                        start_line as usize,
+                    ),
                 });
 
                 // Extract nested functions within the function body
@@ -308,17 +335,22 @@ fn extract_from_declaration(decl: &Declaration, ctx: &mut ExtractionContext) {
                     } else {
                         method_name.clone()
                     };
+                    let start_line = get_line_number(method.span.start, ctx.source_text);
 
                     ctx.functions.push(FunctionDefinition {
                         name: method_name.clone(),
                         function_type,
                         parameters: params,
                         body_span: method.span,
-                        start_line: get_line_number(method.span.start, ctx.source_text),
+                        start_line,
                         end_line: get_line_number(method.span.end, ctx.source_text),
                         class_name: class_name.clone(),
                         parent_function: ctx.parent_function.clone(),
                         node_count: count_function_nodes(method.span, ctx.source_text),
+                        has_ignore_directive: has_similarity_ignore_directive(
+                            ctx.source_text,
+                            start_line as usize,
+                        ),
                     });
 
                     // Extract nested functions within method body
@@ -339,16 +371,21 @@ fn extract_from_declaration(decl: &Declaration, ctx: &mut ExtractionContext) {
                     if let BindingPatternKind::BindingIdentifier(ident) = &decl.id.kind {
                         let params = extract_parameters(&arrow.params);
                         let arrow_name = ident.name.to_string();
+                        let start_line = get_line_number(arrow.span.start, ctx.source_text);
                         ctx.functions.push(FunctionDefinition {
                             name: arrow_name.clone(),
                             function_type: FunctionType::Arrow,
                             parameters: params,
                             body_span: arrow.span,
-                            start_line: get_line_number(arrow.span.start, ctx.source_text),
+                            start_line,
                             end_line: get_line_number(arrow.span.end, ctx.source_text),
                             class_name: None,
                             parent_function: ctx.parent_function.clone(),
                             node_count: count_function_nodes(arrow.span, ctx.source_text),
+                            has_ignore_directive: has_similarity_ignore_directive(
+                                ctx.source_text,
+                                start_line as usize,
+                            ),
                         });
 
                         // Extract nested functions within arrow function body
@@ -503,7 +540,8 @@ pub fn find_similar_functions_in_file(
     threshold: f64,
     options: &TSEDOptions,
 ) -> Result<Vec<SimilarityResult>, String> {
-    let functions = extract_functions(filename, source_text)?;
+    let mut functions = extract_functions(filename, source_text)?;
+    functions.retain(|function| !function.has_ignore_directive);
     let mut similar_pairs = Vec::new();
 
     // Compare all pairs
@@ -564,7 +602,8 @@ pub fn find_similar_functions_across_files(
 
     // Extract functions from all files
     for (filename, source) in files {
-        let functions = extract_functions(filename, source)?;
+        let mut functions = extract_functions(filename, source)?;
+        functions.retain(|function| !function.has_ignore_directive);
         for func in functions {
             all_functions.push((filename.clone(), source.clone(), func));
         }
@@ -831,5 +870,38 @@ mod tests {
                 || (result.func1.name == "checkUser" && result.func2.name == "validateUser")
         });
         assert!(validate_check.is_some());
+    }
+
+    #[test]
+    fn test_extract_functions_marks_similarity_ignore_directives() {
+        let code = r#"
+function keepMe() {
+    return 1;
+}
+
+// similarity-ignore
+function ignoreMe() {
+    return 2;
+}
+
+/**
+ * Keep this duplicated export local for now.
+ */
+// similarity-ignore
+export function ignoredExport() {
+    return 3;
+}
+"#;
+
+        let functions = extract_functions("test.ts", code).unwrap();
+
+        let keep = functions.iter().find(|f| f.name == "keepMe").unwrap();
+        assert!(!keep.has_ignore_directive);
+
+        let ignored = functions.iter().find(|f| f.name == "ignoreMe").unwrap();
+        assert!(ignored.has_ignore_directive);
+
+        let ignored_export = functions.iter().find(|f| f.name == "ignoredExport").unwrap();
+        assert!(ignored_export.has_ignore_directive);
     }
 }

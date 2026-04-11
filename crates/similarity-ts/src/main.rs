@@ -82,6 +82,10 @@ struct Cli {
     #[arg(long)]
     filter_function_body: Option<String>,
 
+    /// Show functions, types, and classes ignored via similarity-ignore comments
+    #[arg(long)]
+    show_ignored: bool,
+
     /// Include both interfaces and type aliases (deprecated - both are included by default)
     #[arg(long, hide = true)]
     include_types: bool,
@@ -200,6 +204,7 @@ fn main() -> anyhow::Result<()> {
             cli.filter_function.as_ref(),
             cli.filter_function_body.as_ref(),
             &cli.exclude,
+            cli.show_ignored,
         )?;
         total_duplicates += duplicate_count;
     }
@@ -226,6 +231,7 @@ fn main() -> anyhow::Result<()> {
             unified_types_enabled,
             &cli.exclude,
             cli.use_structure_comparison,
+            cli.show_ignored,
         )?;
         total_duplicates += type_duplicate_count;
     }
@@ -246,6 +252,7 @@ fn main() -> anyhow::Result<()> {
             !cli.include_implements,
             cli.suggest,
             &cli.exclude,
+            cli.show_ignored,
         )?;
         total_duplicates += class_duplicate_count;
     }
@@ -331,6 +338,7 @@ fn check_types(
     unified_types: bool,
     exclude_patterns: &[String],
     use_structure_comparison: bool,
+    show_ignored: bool,
 ) -> anyhow::Result<usize> {
     use ignore::WalkBuilder;
     use similarity_core::{
@@ -431,6 +439,7 @@ fn check_types(
     // Extract types from all files
     let mut all_types = Vec::new();
     let mut all_type_literals = Vec::new();
+    let mut ignored_types = Vec::new();
 
     for file in &files {
         match fs::read_to_string(file) {
@@ -441,6 +450,15 @@ fn check_types(
                 if !type_literals_only {
                     match extract_types_from_code(&content, &file_str) {
                         Ok(mut types) => {
+                            if show_ignored {
+                                ignored_types.extend(
+                                    types.iter().filter(|ty| ty.has_ignore_directive).map(|ty| {
+                                        (file.display().to_string(), ty.name.clone(), ty.start_line)
+                                    }),
+                                );
+                            }
+                            types.retain(|ty| !ty.has_ignore_directive);
+
                             // Filter types based on command line options
                             if types_only {
                                 types.retain(|t| t.kind == TypeKind::TypeAlias);
@@ -487,6 +505,12 @@ fn check_types(
     println!("Found {} type definitions", all_types.len());
     if include_type_literals {
         println!("Found {} type literals", all_type_literals.len());
+    }
+    if show_ignored && !ignored_types.is_empty() {
+        println!("Ignored {} type(s) via similarity-ignore directive:", ignored_types.len());
+        for (file, name, line) in &ignored_types {
+            println!("  {}:{} {}", file, line, name);
+        }
     }
 
     // Set up comparison options
@@ -1021,6 +1045,7 @@ fn check_classes(
     no_implements: bool,
     suggest: bool,
     exclude_patterns: &[String],
+    show_ignored: bool,
 ) -> anyhow::Result<usize> {
     use ignore::WalkBuilder;
     use similarity_core::{extract_classes_from_code, find_similar_classes};
@@ -1117,6 +1142,7 @@ fn check_classes(
     // Extract classes from all files
     let mut all_classes = Vec::new();
     let mut excluded_classes = Vec::new();
+    let mut ignored_classes = Vec::new();
 
     for file in &files {
         match fs::read_to_string(file) {
@@ -1127,6 +1153,17 @@ fn check_classes(
                 match extract_classes_from_code(&content, &file_str) {
                     Ok(classes) => {
                         for class in classes {
+                            if class.has_ignore_directive {
+                                if show_ignored {
+                                    ignored_classes.push((
+                                        file.display().to_string(),
+                                        class.name.clone(),
+                                        class.start_line,
+                                    ));
+                                }
+                                continue;
+                            }
+
                             // Check if class should be excluded
                             let excluded_by_inheritance = no_inheritance && class.extends.is_some();
                             let excluded_by_implements =
@@ -1159,6 +1196,13 @@ fn check_classes(
     }
 
     println!("Found {} class definitions", all_classes.len());
+    if show_ignored && !ignored_classes.is_empty() {
+        println!("Ignored {} class(es) via similarity-ignore directive:", ignored_classes.len());
+        for (file, name, line) in &ignored_classes {
+            println!("  {}:{} {}", file, line, name);
+        }
+        println!();
+    }
 
     if !excluded_classes.is_empty() {
         println!("Excluded {} classes:", excluded_classes.len());

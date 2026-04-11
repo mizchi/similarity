@@ -41,7 +41,8 @@ pub fn find_similar_functions_fast(
     options: &FastSimilarityOptions,
 ) -> Result<Vec<SimilarityResult>, String> {
     // Extract functions
-    let functions = extract_functions(filename, source_text)?;
+    let mut functions = extract_functions(filename, source_text)?;
+    functions.retain(|function| !function.has_ignore_directive);
 
     // Create fingerprints
     let mut fingerprinted = Vec::new();
@@ -147,7 +148,8 @@ pub fn find_similar_functions_across_files_fast(
 
     // Extract functions with fingerprints from all files
     for (filename, source) in files {
-        let functions = extract_functions(filename, source)?;
+        let mut functions = extract_functions(filename, source)?;
+        functions.retain(|function| !function.has_ignore_directive);
         for func in functions {
             if let Some(min_tokens) = options.tsed_options.min_tokens {
                 // If min_tokens is specified, use token count instead of line count

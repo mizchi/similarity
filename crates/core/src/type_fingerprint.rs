@@ -206,6 +206,7 @@ mod tests {
             start_line: 1,
             end_line: 5,
             file_path: "test.ts".to_string(),
+            has_ignore_directive: false,
         };
 
         let fingerprint = generate_type_fingerprint(&type_def);

@@ -5,6 +5,7 @@ pub mod ast_exchange;
 pub mod ast_fingerprint;
 pub mod class_comparator;
 pub mod class_extractor;
+pub mod config_loader;
 pub mod css_structure_adapter;
 pub mod enhanced_similarity;
 pub mod fast_similarity;
@@ -12,6 +13,7 @@ pub mod function_extractor;
 pub mod generic_overlap_detector;
 pub mod generic_parser_config;
 pub mod generic_tree_sitter_parser;
+mod ignore_directive;
 pub mod language_parser;
 pub mod overlap_detector;
 pub mod parser;
@@ -114,6 +116,7 @@ pub use class_extractor::{
     extract_classes_from_code, extract_classes_from_files, ClassDefinition, ClassMethod,
     ClassProperty, MethodKind,
 };
+pub use config_loader::ConfigLoader;
 
 #[cfg(test)]
 mod structure_comparator_tests;

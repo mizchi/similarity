@@ -7,6 +7,8 @@ use oxc_parser::Parser;
 use oxc_span::SourceType;
 use std::collections::HashMap;
 
+use crate::ignore_directive::has_similarity_ignore_directive;
+
 #[derive(Debug, Clone)]
 pub struct TypeDefinition {
     pub name: String,
@@ -17,6 +19,7 @@ pub struct TypeDefinition {
     pub start_line: usize,
     pub end_line: usize,
     pub file_path: String,
+    pub has_ignore_directive: bool,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeKind {
@@ -106,6 +109,23 @@ impl TypeExtractor {
                         types.push(type_def);
                     }
                 }
+                Statement::ExportNamedDeclaration(export) => {
+                    if let Some(decl) = &export.declaration {
+                        match decl {
+                            oxc_ast::ast::Declaration::TSInterfaceDeclaration(interface) => {
+                                if let Some(type_def) = self.extract_interface(interface) {
+                                    types.push(type_def);
+                                }
+                            }
+                            oxc_ast::ast::Declaration::TSTypeAliasDeclaration(type_alias) => {
+                                if let Some(type_def) = self.extract_type_alias(type_alias) {
+                                    types.push(type_def);
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
                 _ => {}
             }
         }
@@ -152,6 +172,7 @@ impl TypeExtractor {
             start_line,
             end_line,
             file_path: self.file_path.clone(),
+            has_ignore_directive: has_similarity_ignore_directive(&self.source_text, start_line),
         })
     }
 
@@ -172,6 +193,7 @@ impl TypeExtractor {
             start_line,
             end_line,
             file_path: self.file_path.clone(),
+            has_ignore_directive: has_similarity_ignore_directive(&self.source_text, start_line),
         })
     }
 
@@ -659,5 +681,35 @@ interface User extends BaseUser {
         let user_type = &types[1];
         assert_eq!(user_type.name, "User");
         assert_eq!(user_type.extends, vec!["BaseUser"]);
+    }
+
+    #[test]
+    fn test_extract_types_marks_similarity_ignore_directives() {
+        let source = r#"
+// similarity-ignore
+interface IgnoredUser {
+    id: string;
+}
+
+type ActiveUser = {
+    id: string;
+};
+
+/* similarity-ignore */
+type IgnoredAlias = {
+    value: number;
+};
+"#;
+
+        let types = extract_types_from_code(source, "test.ts").unwrap();
+
+        let ignored_user = types.iter().find(|t| t.name == "IgnoredUser").unwrap();
+        assert!(ignored_user.has_ignore_directive);
+
+        let active_user = types.iter().find(|t| t.name == "ActiveUser").unwrap();
+        assert!(!active_user.has_ignore_directive);
+
+        let ignored_alias = types.iter().find(|t| t.name == "IgnoredAlias").unwrap();
+        assert!(ignored_alias.has_ignore_directive);
     }
 }
