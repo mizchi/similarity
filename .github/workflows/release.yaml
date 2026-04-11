@@ -1,0 +1,129 @@
+name: Release Binaries
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing git tag to publish (e.g. v0.5.0)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  BINARIES: >-
+    similarity-ts similarity-py similarity-rs similarity-elixir
+    similarity-generic similarity-md similarity-css similarity-php
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-13
+            target: x86_64-apple-darwin
+          - os: macos-14
+            target: aarch64-apple-darwin
+
+    steps:
+      - name: Resolve release tag
+        id: vars
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.vars.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-binaries-v1
+
+      - name: Build release binaries
+        run: cargo build --workspace --release --bins --target ${{ matrix.target }}
+
+      - name: Package release archive
+        id: package
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.vars.outputs.tag }}
+        run: |
+          set -euo pipefail
+          archive_basename="similarity-${RELEASE_TAG}-${{ matrix.target }}"
+          staging_dir="$RUNNER_TEMP/$archive_basename"
+
+          mkdir -p "$staging_dir"
+
+          for bin in $BINARIES; do
+            cp "target/${{ matrix.target }}/release/$bin" "$staging_dir/"
+          done
+
+          cp README.md LICENSE "$staging_dir/"
+
+          tar -C "$RUNNER_TEMP" -czf "$archive_basename.tar.gz" "$archive_basename"
+
+          echo "archive=$archive_basename.tar.gz" >> "$GITHUB_OUTPUT"
+
+      - name: Upload packaged binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: ${{ steps.package.outputs.archive }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Resolve release tag
+        id: vars
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download release archives
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate SHA256 checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          shasum -a 256 *.tar.gz > SHA256SUMS.txt
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          files: |
+            dist/*.tar.gz
+            dist/SHA256SUMS.txt

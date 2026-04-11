@@ -85,6 +85,23 @@ The AI will analyze patterns and suggest refactoring strategies.
 
 ## Installation
 
+### Prebuilt binaries (GitHub Releases)
+
+Push a `v*` tag to publish prebuilt archives to GitHub Releases.
+
+```bash
+git tag v0.5.0
+git push origin v0.5.0
+```
+
+Each release uploads one archive per target:
+
+- `similarity-<tag>-x86_64-unknown-linux-gnu.tar.gz`
+- `similarity-<tag>-x86_64-apple-darwin.tar.gz`
+- `similarity-<tag>-aarch64-apple-darwin.tar.gz`
+
+Each archive contains all CLI binaries (`similarity-ts`, `similarity-py`, `similarity-rs`, `similarity-elixir`, `similarity-generic`, `similarity-md`, `similarity-css`, `similarity-php`) plus `README.md` and `LICENSE`.
+
 ### TypeScript/JavaScript
 
 ```bash
