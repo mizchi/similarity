@@ -1,8 +1,8 @@
-use crate::structure_comparator::{
-    Structure, StructureIdentifier, StructureKind, StructureMember, StructureMetadata,
-    SourceLocation, StructureComparator, ComparisonOptions, StructureComparisonResult,
-};
 use crate::language_parser::GenericTypeDef;
+use crate::structure_comparator::{
+    ComparisonOptions, SourceLocation, Structure, StructureComparator, StructureComparisonResult,
+    StructureIdentifier, StructureKind, StructureMember, StructureMetadata,
+};
 
 /// Rustの型定義を一般構造に変換
 impl From<GenericTypeDef> for Structure {
@@ -12,8 +12,9 @@ impl From<GenericTypeDef> for Structure {
             "enum" => StructureKind::RustEnum,
             _ => StructureKind::Generic(type_def.kind.clone()),
         };
-        
-        let members = type_def.fields
+
+        let members = type_def
+            .fields
             .into_iter()
             .map(|field| {
                 // For enums, fields are variants
@@ -26,16 +27,11 @@ impl From<GenericTypeDef> for Structure {
                     // For now, we'll use a placeholder since GenericTypeDef doesn't store types
                     (field.clone(), "unknown".to_string())
                 };
-                
-                StructureMember {
-                    name,
-                    value_type,
-                    modifiers: vec![],
-                    nested: None,
-                }
+
+                StructureMember { name, value_type, modifiers: vec![], nested: None }
             })
             .collect();
-        
+
         Structure {
             identifier: StructureIdentifier {
                 name: type_def.name.clone(),
@@ -50,8 +46,8 @@ impl From<GenericTypeDef> for Structure {
                     end_line: type_def.end_line as usize,
                 },
                 generics: Vec::new(), // Could extract from type parameters
-                extends: Vec::new(), // Could extract traits
-                visibility: None, // Could extract pub/pub(crate)/etc
+                extends: Vec::new(),  // Could extract traits
+                visibility: None,     // Could extract pub/pub(crate)/etc
             },
         }
     }
@@ -64,7 +60,7 @@ pub struct RustStructDef {
     pub fields: Vec<RustFieldDef>,
     pub generics: Vec<String>,
     pub derives: Vec<String>,
-    pub attributes: Vec<String>,  // Other attributes like #[serde(...)], #[cfg(...)]
+    pub attributes: Vec<String>, // Other attributes like #[serde(...)], #[cfg(...)]
     pub visibility: Option<String>,
     pub is_tuple_struct: bool,
     pub start_line: usize,
@@ -86,7 +82,7 @@ pub struct RustEnumDef {
     pub variants: Vec<RustVariantDef>,
     pub generics: Vec<String>,
     pub derives: Vec<String>,
-    pub attributes: Vec<String>,  // Other attributes like #[serde(...)], #[cfg(...)]
+    pub attributes: Vec<String>, // Other attributes like #[serde(...)], #[cfg(...)]
     pub visibility: Option<String>,
     pub start_line: usize,
     pub end_line: usize,
@@ -109,7 +105,8 @@ pub enum RustVariantType {
 /// Rust構造体を一般構造に変換
 impl From<RustStructDef> for Structure {
     fn from(struct_def: RustStructDef) -> Self {
-        let mut members: Vec<StructureMember> = struct_def.fields
+        let mut members: Vec<StructureMember> = struct_def
+            .fields
             .into_iter()
             .map(|field| StructureMember {
                 name: field.name,
@@ -118,7 +115,7 @@ impl From<RustStructDef> for Structure {
                 nested: None,
             })
             .collect();
-        
+
         // Add derives as special members for comparison
         if !struct_def.derives.is_empty() {
             members.push(StructureMember {
@@ -128,7 +125,7 @@ impl From<RustStructDef> for Structure {
                 nested: None,
             });
         }
-        
+
         // Add other attributes as special members
         if !struct_def.attributes.is_empty() {
             members.push(StructureMember {
@@ -138,7 +135,7 @@ impl From<RustStructDef> for Structure {
                 nested: None,
             });
         }
-        
+
         Structure {
             identifier: StructureIdentifier {
                 name: struct_def.name.clone(),
@@ -163,7 +160,8 @@ impl From<RustStructDef> for Structure {
 /// Rust enumを一般構造に変換
 impl From<RustEnumDef> for Structure {
     fn from(enum_def: RustEnumDef) -> Self {
-        let mut members: Vec<StructureMember> = enum_def.variants
+        let mut members: Vec<StructureMember> = enum_def
+            .variants
             .into_iter()
             .map(|variant| {
                 let value_type = match variant.variant_type {
@@ -177,7 +175,7 @@ impl From<RustEnumDef> for Structure {
                         format!("{{ {} }}", field_strs.join(", "))
                     }
                 };
-                
+
                 StructureMember {
                     name: variant.name,
                     value_type,
@@ -186,7 +184,7 @@ impl From<RustEnumDef> for Structure {
                 }
             })
             .collect();
-        
+
         // Add derives as special members for comparison
         if !enum_def.derives.is_empty() {
             members.push(StructureMember {
@@ -196,7 +194,7 @@ impl From<RustEnumDef> for Structure {
                 nested: None,
             });
         }
-        
+
         // Add other attributes as special members
         if !enum_def.attributes.is_empty() {
             members.push(StructureMember {
@@ -206,7 +204,7 @@ impl From<RustEnumDef> for Structure {
                 nested: None,
             });
         }
-        
+
         Structure {
             identifier: StructureIdentifier {
                 name: enum_def.name.clone(),
@@ -233,6 +231,12 @@ pub struct RustStructureComparator {
     pub comparator: StructureComparator,
 }
 
+impl Default for RustStructureComparator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RustStructureComparator {
     pub fn new() -> Self {
         let options = ComparisonOptions {
@@ -241,34 +245,42 @@ impl RustStructureComparator {
             threshold: 0.7,
             ..Default::default()
         };
-        
-        Self {
-            comparator: StructureComparator::new(options),
-        }
+
+        Self { comparator: StructureComparator::new(options) }
     }
-    
+
     pub fn with_options(options: ComparisonOptions) -> Self {
-        Self {
-            comparator: StructureComparator::new(options),
-        }
+        Self { comparator: StructureComparator::new(options) }
     }
-    
+
     /// 構造体を比較
-    pub fn compare_structs(&mut self, struct1: &RustStructDef, struct2: &RustStructDef) -> StructureComparisonResult {
+    pub fn compare_structs(
+        &mut self,
+        struct1: &RustStructDef,
+        struct2: &RustStructDef,
+    ) -> StructureComparisonResult {
         let s1 = Structure::from(struct1.clone());
         let s2 = Structure::from(struct2.clone());
         self.comparator.compare(&s1, &s2)
     }
-    
+
     /// Enumを比較
-    pub fn compare_enums(&mut self, enum1: &RustEnumDef, enum2: &RustEnumDef) -> StructureComparisonResult {
+    pub fn compare_enums(
+        &mut self,
+        enum1: &RustEnumDef,
+        enum2: &RustEnumDef,
+    ) -> StructureComparisonResult {
         let s1 = Structure::from(enum1.clone());
         let s2 = Structure::from(enum2.clone());
         self.comparator.compare(&s1, &s2)
     }
-    
+
     /// 汎用型定義を比較
-    pub fn compare_generic_types(&mut self, type1: &GenericTypeDef, type2: &GenericTypeDef) -> StructureComparisonResult {
+    pub fn compare_generic_types(
+        &mut self,
+        type1: &GenericTypeDef,
+        type2: &GenericTypeDef,
+    ) -> StructureComparisonResult {
         let s1 = Structure::from(type1.clone());
         let s2 = Structure::from(type2.clone());
         self.comparator.compare(&s1, &s2)
@@ -278,7 +290,7 @@ impl RustStructureComparator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_struct_to_structure_conversion() {
         let rust_struct = RustStructDef {
@@ -304,9 +316,9 @@ mod tests {
             end_line: 5,
             file_path: "user.rs".to_string(),
         };
-        
+
         let structure = Structure::from(rust_struct);
-        
+
         assert_eq!(structure.identifier.name, "User");
         assert_eq!(structure.identifier.kind, StructureKind::RustStruct);
         assert_eq!(structure.members.len(), 3); // 2 fields + 1 @derives
@@ -316,7 +328,7 @@ mod tests {
         assert_eq!(structure.members[2].name, "@derives");
         assert_eq!(structure.members[2].value_type, "Debug, Clone");
     }
-    
+
     #[test]
     fn test_enum_to_structure_conversion() {
         let rust_enum = RustEnumDef {
@@ -339,9 +351,9 @@ mod tests {
             end_line: 4,
             file_path: "result.rs".to_string(),
         };
-        
+
         let structure = Structure::from(rust_enum);
-        
+
         assert_eq!(structure.identifier.name, "Result");
         assert_eq!(structure.identifier.kind, StructureKind::RustEnum);
         assert_eq!(structure.members.len(), 3); // 2 variants + 1 @derives
@@ -351,11 +363,11 @@ mod tests {
         assert_eq!(structure.members[2].name, "@derives");
         assert_eq!(structure.members[2].value_type, "Debug");
     }
-    
+
     #[test]
     fn test_rust_comparator() {
         let mut comparator = RustStructureComparator::new();
-        
+
         let struct1 = RustStructDef {
             name: "User".to_string(),
             fields: vec![
@@ -379,7 +391,7 @@ mod tests {
             end_line: 5,
             file_path: "user.rs".to_string(),
         };
-        
+
         let struct2 = RustStructDef {
             name: "Person".to_string(),
             fields: vec![
@@ -403,29 +415,26 @@ mod tests {
             end_line: 15,
             file_path: "person.rs".to_string(),
         };
-        
+
         let result = comparator.compare_structs(&struct1, &struct2);
-        
+
         // Same structure, different names
         assert!(result.member_similarity > 0.9);
         assert!(result.identifier_similarity < 0.5);
         assert!(result.overall_similarity > 0.6);
     }
-    
-    
+
     #[test]
     fn test_struct_comparison_with_derives() {
         let mut comparator = RustStructureComparator::new();
-        
+
         let struct1 = RustStructDef {
             name: "User".to_string(),
-            fields: vec![
-                RustFieldDef {
-                    name: "id".to_string(),
-                    field_type: "u64".to_string(),
-                    visibility: Some("pub".to_string()),
-                },
-            ],
+            fields: vec![RustFieldDef {
+                name: "id".to_string(),
+                field_type: "u64".to_string(),
+                visibility: Some("pub".to_string()),
+            }],
             generics: vec![],
             derives: vec!["Debug".to_string(), "Clone".to_string(), "Serialize".to_string()],
             attributes: vec![],
@@ -435,17 +444,15 @@ mod tests {
             end_line: 5,
             file_path: "user.rs".to_string(),
         };
-        
+
         // Same fields, different derives
         let struct2 = RustStructDef {
             name: "User".to_string(),
-            fields: vec![
-                RustFieldDef {
-                    name: "id".to_string(),
-                    field_type: "u64".to_string(),
-                    visibility: Some("pub".to_string()),
-                },
-            ],
+            fields: vec![RustFieldDef {
+                name: "id".to_string(),
+                field_type: "u64".to_string(),
+                visibility: Some("pub".to_string()),
+            }],
             generics: vec![],
             derives: vec!["Debug".to_string(), "PartialEq".to_string()],
             attributes: vec![],
@@ -455,19 +462,17 @@ mod tests {
             end_line: 14,
             file_path: "user.rs".to_string(),
         };
-        
+
         let result1 = comparator.compare_structs(&struct1, &struct2);
-        
+
         // Same fields, same derives
         let struct3 = RustStructDef {
             name: "User".to_string(),
-            fields: vec![
-                RustFieldDef {
-                    name: "id".to_string(),
-                    field_type: "u64".to_string(),
-                    visibility: Some("pub".to_string()),
-                },
-            ],
+            fields: vec![RustFieldDef {
+                name: "id".to_string(),
+                field_type: "u64".to_string(),
+                visibility: Some("pub".to_string()),
+            }],
             generics: vec![],
             derives: vec!["Debug".to_string(), "Clone".to_string(), "Serialize".to_string()],
             attributes: vec![],
@@ -477,27 +482,25 @@ mod tests {
             end_line: 24,
             file_path: "user.rs".to_string(),
         };
-        
+
         let result2 = comparator.compare_structs(&struct1, &struct3);
-        
+
         // Structs with same derives should have equal or higher similarity
         // Both have the same fields, but different @derives members
         assert!(result2.overall_similarity >= result1.overall_similarity);
-        
+
         // Check @derives member comparison
         // For struct1 and struct3 (same derives), @derives should match perfectly (1.0)
-        let derives_match_result2 = result2.member_matches.iter()
-            .find(|m| m.member1 == "@derives")
-            .map(|m| m.similarity);
+        let derives_match_result2 =
+            result2.member_matches.iter().find(|m| m.member1 == "@derives").map(|m| m.similarity);
         assert_eq!(derives_match_result2, Some(1.0));
-        
+
         // For struct1 and struct2 (different derives), @derives should have lower similarity
-        let derives_match_result1 = result1.member_matches.iter()
-            .find(|m| m.member1 == "@derives")
-            .map(|m| m.similarity);
+        let derives_match_result1 =
+            result1.member_matches.iter().find(|m| m.member1 == "@derives").map(|m| m.similarity);
         // The derives are different but may have partial match (both have "Debug")
         assert!(derives_match_result1.unwrap_or(0.0) < 1.0);
-        
+
         // Both should have same number of member matches (id + @derives)
         assert_eq!(result2.member_matches.len(), 2);
         assert_eq!(result1.member_matches.len(), 2);

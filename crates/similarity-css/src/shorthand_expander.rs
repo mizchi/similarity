@@ -7,6 +7,9 @@ pub fn expand_shorthand_properties(declarations: &[(String, String)]) -> Vec<(St
             "margin" => expand_box_model_shorthand(&mut expanded, "margin", value),
             "padding" => expand_box_model_shorthand(&mut expanded, "padding", value),
             "border" => expand_border_shorthand(&mut expanded, value),
+            "border-width" => expand_border_side_value(&mut expanded, "width", value),
+            "border-style" => expand_border_side_value(&mut expanded, "style", value),
+            "border-color" => expand_border_side_value(&mut expanded, "color", value),
             "border-radius" => expand_border_radius_shorthand(&mut expanded, value),
             "background" => expand_background_shorthand(&mut expanded, value),
             "font" => expand_font_shorthand(&mut expanded, value),
@@ -32,12 +35,12 @@ pub fn expand_shorthand_properties(declarations: &[(String, String)]) -> Vec<(St
 
 /// Expand margin/padding shorthand (1-4 values)
 fn expand_box_model_shorthand(expanded: &mut Vec<(String, String)>, prefix: &str, value: &str) {
-    let parts: Vec<&str> = value.split_whitespace().collect();
+    let parts = split_top_level_whitespace(value);
 
     match parts.len() {
         1 => {
             // All sides same value
-            let val = parts[0];
+            let val = parts[0].as_str();
             expanded.push((format!("{prefix}-top"), val.to_string()));
             expanded.push((format!("{prefix}-right"), val.to_string()));
             expanded.push((format!("{prefix}-bottom"), val.to_string()));
@@ -45,7 +48,7 @@ fn expand_box_model_shorthand(expanded: &mut Vec<(String, String)>, prefix: &str
         }
         2 => {
             // vertical | horizontal
-            let (vertical, horizontal) = (parts[0], parts[1]);
+            let (vertical, horizontal) = (parts[0].as_str(), parts[1].as_str());
             expanded.push((format!("{prefix}-top"), vertical.to_string()));
             expanded.push((format!("{prefix}-right"), horizontal.to_string()));
             expanded.push((format!("{prefix}-bottom"), vertical.to_string()));
@@ -53,7 +56,8 @@ fn expand_box_model_shorthand(expanded: &mut Vec<(String, String)>, prefix: &str
         }
         3 => {
             // top | horizontal | bottom
-            let (top, horizontal, bottom) = (parts[0], parts[1], parts[2]);
+            let (top, horizontal, bottom) =
+                (parts[0].as_str(), parts[1].as_str(), parts[2].as_str());
             expanded.push((format!("{prefix}-top"), top.to_string()));
             expanded.push((format!("{prefix}-right"), horizontal.to_string()));
             expanded.push((format!("{prefix}-bottom"), bottom.to_string()));
@@ -61,10 +65,10 @@ fn expand_box_model_shorthand(expanded: &mut Vec<(String, String)>, prefix: &str
         }
         4 => {
             // top | right | bottom | left
-            expanded.push((format!("{prefix}-top"), parts[0].to_string()));
-            expanded.push((format!("{prefix}-right"), parts[1].to_string()));
-            expanded.push((format!("{prefix}-bottom"), parts[2].to_string()));
-            expanded.push((format!("{prefix}-left"), parts[3].to_string()));
+            expanded.push((format!("{prefix}-top"), parts[0].clone()));
+            expanded.push((format!("{prefix}-right"), parts[1].clone()));
+            expanded.push((format!("{prefix}-bottom"), parts[2].clone()));
+            expanded.push((format!("{prefix}-left"), parts[3].clone()));
         }
         _ => {
             // Invalid, keep original
@@ -98,6 +102,12 @@ fn expand_border_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
         expanded.push((format!("border-{side}-width"), width.to_string()));
         expanded.push((format!("border-{side}-style"), style.to_string()));
         expanded.push((format!("border-{side}-color"), color.to_string()));
+    }
+}
+
+fn expand_border_side_value(expanded: &mut Vec<(String, String)>, suffix: &str, value: &str) {
+    for side in &["top", "right", "bottom", "left"] {
+        expanded.push((format!("border-{side}-{suffix}"), value.to_string()));
     }
 }
 
@@ -141,10 +151,13 @@ fn expand_border_radius_shorthand(expanded: &mut Vec<(String, String)>, value: &
 
 /// Expand background shorthand (simplified)
 fn expand_background_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
+    let top_level_parts = split_top_level_whitespace(value);
+
     // This is a simplified version - full background parsing is complex
-    if value.contains("url(")
-        || value.contains("linear-gradient")
-        || value.contains("radial-gradient")
+    if top_level_parts.len() == 1
+        && (value.contains("url(")
+            || value.contains("linear-gradient")
+            || value.contains("radial-gradient"))
     {
         expanded.push(("background-image".to_string(), value.to_string()));
     } else if is_color_value(value) {
@@ -157,6 +170,11 @@ fn expand_background_shorthand(expanded: &mut Vec<(String, String)>, value: &str
 
 /// Expand font shorthand (simplified)
 fn expand_font_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
+    if value.contains('/') || value.contains(',') {
+        expanded.push(("font".to_string(), value.to_string()));
+        return;
+    }
+
     // This is a simplified version
     let parts: Vec<&str> = value.split_whitespace().collect();
 
@@ -192,29 +210,39 @@ fn expand_flex_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
                 expanded.push(("flex-grow".to_string(), "1".to_string()));
                 expanded.push(("flex-shrink".to_string(), "1".to_string()));
                 expanded.push(("flex-basis".to_string(), "auto".to_string()));
-            } else if parts[0].parse::<f64>().is_ok() {
+            } else if is_flex_number(parts[0]) {
                 // Single number is flex-grow
                 expanded.push(("flex-grow".to_string(), parts[0].to_string()));
                 expanded.push(("flex-shrink".to_string(), "1".to_string()));
                 expanded.push(("flex-basis".to_string(), "0%".to_string()));
-            } else {
+            } else if is_flex_basis(parts[0]) {
                 // Must be flex-basis
                 expanded.push(("flex-grow".to_string(), "1".to_string()));
                 expanded.push(("flex-shrink".to_string(), "1".to_string()));
                 expanded.push(("flex-basis".to_string(), parts[0].to_string()));
+            } else {
+                expanded.push(("flex".to_string(), value.to_string()));
             }
         }
         2 => {
             // flex-grow flex-shrink
-            expanded.push(("flex-grow".to_string(), parts[0].to_string()));
-            expanded.push(("flex-shrink".to_string(), parts[1].to_string()));
-            expanded.push(("flex-basis".to_string(), "0%".to_string()));
+            if is_flex_number(parts[0]) && is_flex_number(parts[1]) {
+                expanded.push(("flex-grow".to_string(), parts[0].to_string()));
+                expanded.push(("flex-shrink".to_string(), parts[1].to_string()));
+                expanded.push(("flex-basis".to_string(), "0%".to_string()));
+            } else {
+                expanded.push(("flex".to_string(), value.to_string()));
+            }
         }
         3 => {
             // flex-grow flex-shrink flex-basis
-            expanded.push(("flex-grow".to_string(), parts[0].to_string()));
-            expanded.push(("flex-shrink".to_string(), parts[1].to_string()));
-            expanded.push(("flex-basis".to_string(), parts[2].to_string()));
+            if is_flex_number(parts[0]) && is_flex_number(parts[1]) && is_flex_basis(parts[2]) {
+                expanded.push(("flex-grow".to_string(), parts[0].to_string()));
+                expanded.push(("flex-shrink".to_string(), parts[1].to_string()));
+                expanded.push(("flex-basis".to_string(), parts[2].to_string()));
+            } else {
+                expanded.push(("flex".to_string(), value.to_string()));
+            }
         }
         _ => {
             expanded.push(("flex".to_string(), value.to_string()));
@@ -419,6 +447,22 @@ fn is_color_value(value: &str) -> bool {
         )
 }
 
+fn is_flex_number(value: &str) -> bool {
+    value.parse::<f64>().is_ok()
+}
+
+fn is_flex_basis(value: &str) -> bool {
+    matches!(value, "auto" | "content" | "max-content" | "min-content" | "fit-content")
+        || value.ends_with("px")
+        || value.ends_with("em")
+        || value.ends_with("rem")
+        || value.ends_with('%')
+        || value.ends_with("vh")
+        || value.ends_with("vw")
+        || value == "0"
+        || value.starts_with("calc(")
+}
+
 fn extract_duration(value: &str) -> Option<String> {
     for part in value.split_whitespace() {
         if part.ends_with("s") || part.ends_with("ms") {
@@ -426,6 +470,38 @@ fn extract_duration(value: &str) -> Option<String> {
         }
     }
     None
+}
+
+fn split_top_level_whitespace(value: &str) -> Vec<String> {
+    let mut parts = Vec::new();
+    let mut current = String::new();
+    let mut depth = 0_u32;
+
+    for ch in value.chars() {
+        match ch {
+            '(' => {
+                depth += 1;
+                current.push(ch);
+            }
+            ')' => {
+                depth = depth.saturating_sub(1);
+                current.push(ch);
+            }
+            c if c.is_whitespace() && depth == 0 => {
+                if !current.is_empty() {
+                    parts.push(current.trim().to_string());
+                    current.clear();
+                }
+            }
+            _ => current.push(ch),
+        }
+    }
+
+    if !current.trim().is_empty() {
+        parts.push(current.trim().to_string());
+    }
+
+    parts
 }
 
 #[cfg(test)]

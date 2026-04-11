@@ -134,7 +134,6 @@ type UserData = {
     let mut cmd = Command::cargo_bin("similarity-ts").unwrap();
     cmd.arg(dir.path())
         .arg("--no-functions")
-        .arg("--experimental-types")
         .assert()
         .success()
         .stdout(predicate::str::contains("User"))
@@ -144,7 +143,7 @@ type UserData = {
 }
 
 #[test]
-fn test_default_command_runs_functions_only() {
+fn test_default_command_runs_functions_and_types() {
     let dir = tempdir().unwrap();
     let test_file = dir.path().join("test.ts");
 
@@ -181,7 +180,7 @@ interface IPerson {
     )
     .unwrap();
 
-    // Run default (functions only)
+    // Run default (functions + types)
     let mut cmd = Command::cargo_bin("similarity-ts").unwrap();
     cmd.arg(dir.path())
         .arg("--min-lines")
@@ -190,10 +189,9 @@ interface IPerson {
         .success()
         .stdout(predicate::str::contains("Function Similarity"))
         .stdout(predicate::str::contains("Checking 1 files for duplicates"))
-        // Should NOT contain type analysis
-        .stdout(predicate::str::contains("Type Similarity").not())
-        .stdout(predicate::str::contains("IUser").not())
-        .stdout(predicate::str::contains("IPerson").not());
+        .stdout(predicate::str::contains("Type Similarity"))
+        .stdout(predicate::str::contains("IUser"))
+        .stdout(predicate::str::contains("IPerson"));
 }
 
 #[test]

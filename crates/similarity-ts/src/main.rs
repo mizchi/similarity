@@ -145,7 +145,7 @@ struct Cli {
     /// Exit with code 1 if duplicates are found
     #[arg(long)]
     fail_on_duplicates: bool,
-    
+
     /// Use new generalized structure comparison framework (experimental)
     #[arg(long)]
     use_structure_comparison: bool,
@@ -336,7 +336,7 @@ fn check_types(
     use similarity_core::{
         extract_type_literals_from_code, extract_types_from_code, find_similar_type_literals,
         find_similar_types, find_similar_unified_types, find_similar_unified_types_structured,
-        TypeComparisonOptions, TypeKind, UnifiedType, ComparisonOptions,
+        ComparisonOptions, TypeComparisonOptions, TypeKind, UnifiedType,
     };
     use std::collections::HashSet;
     use std::fs;
@@ -695,9 +695,9 @@ fn check_types(
                 );
 
                 if print {
-                    show_type_literal_details(&literal1);
-                    show_type_literal_details(&literal2);
-                    show_comparison_details(&result);
+                    show_type_literal_details(literal1);
+                    show_type_literal_details(literal2);
+                    show_comparison_details(result);
                 }
             }
 
@@ -1172,7 +1172,7 @@ fn check_classes(
             };
             println!("  - {} ({})", class.name, reason);
         }
-        println!("");
+        println!();
     }
 
     // Find similar classes across all files

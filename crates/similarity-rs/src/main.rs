@@ -90,7 +90,7 @@ struct Cli {
     /// Disable function similarity checking
     #[arg(long = "no-functions")]
     no_functions: bool,
-    
+
     /// Use new generalized structure comparison framework (experimental)
     #[arg(long)]
     use_structure_comparison: bool,

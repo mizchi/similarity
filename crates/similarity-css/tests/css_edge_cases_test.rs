@@ -208,7 +208,7 @@ fn test_keyframes_and_animations() {
     let result = analyzer.analyze();
 
     let animation_duplicates: Vec<_> = result
-        .exact_duplicates
+        .style_duplicates
         .iter()
         .filter(|d| d.rule1.selector.contains("fade-in") || d.rule1.selector.contains("spinner"))
         .collect();

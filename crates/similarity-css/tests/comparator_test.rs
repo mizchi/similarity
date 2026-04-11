@@ -90,7 +90,8 @@ fn test_threshold_filtering() {
 
     let rule2 = create_test_rule(".btn", vec![("background", "blue"), ("color", "white")]);
 
-    let high_results = compare_css_rules(&[rule1.clone()], &[rule2.clone()], 0.95);
+    let high_results =
+        compare_css_rules(std::slice::from_ref(&rule1), std::slice::from_ref(&rule2), 0.95);
     let low_results = compare_css_rules(&[rule1], &[rule2], 0.1);
 
     assert_eq!(high_results.len(), 0);

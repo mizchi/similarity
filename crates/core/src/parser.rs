@@ -1,7 +1,8 @@
 use oxc_allocator::Allocator;
 use oxc_ast::ast::{
-    BindingPatternKind, BlockStatement, ClassElement, Expression, FormalParameter, FunctionBody,
-    Program, PropertyKey, Statement, VariableDeclarator,
+    BindingPatternKind, BlockStatement, Class, ClassElement, Declaration,
+    ExportDefaultDeclarationKind, Expression, FormalParameter, Function, FunctionBody, Program,
+    PropertyKey, Statement, VariableDeclaration, VariableDeclarator,
 };
 use oxc_parser::Parser;
 use oxc_span::SourceType;
@@ -49,60 +50,34 @@ pub fn ast_to_tree_node(program: &Program, id_counter: &mut usize) -> Rc<TreeNod
 fn statement_to_tree_node(stmt: &Statement, id_counter: &mut usize) -> Option<Rc<TreeNode>> {
     match stmt {
         Statement::FunctionDeclaration(func) => {
-            let label = func.id.as_ref().map_or("Function", |id| id.name.as_str()).to_string();
-            let mut node = TreeNode::new(label, "FunctionDeclaration".to_string(), *id_counter);
-            *id_counter += 1;
-
-            // Add parameters
-            for param in &func.params.items {
-                if let Some(param_node) = formal_parameter_to_tree_node(param, id_counter) {
-                    node.add_child(param_node);
-                }
-            }
-
-            // Add body
-            if let Some(body) = &func.body {
-                if let Some(body_node) = function_body_to_tree_node(body, id_counter) {
-                    node.add_child(body_node);
-                }
-            }
-
-            Some(Rc::new(node))
+            function_declaration_to_tree_node(func, id_counter, "Function")
         }
         Statement::ClassDeclaration(class) => {
-            let label = class.id.as_ref().map_or("Class", |id| id.name.as_str()).to_string();
-            let mut node = TreeNode::new(label, "ClassDeclaration".to_string(), *id_counter);
-            *id_counter += 1;
-
-            // Add class body elements
-            for element in &class.body.body {
-                if let Some(elem_node) = class_element_to_tree_node(element, id_counter) {
-                    node.add_child(elem_node);
-                }
-            }
-
-            Some(Rc::new(node))
+            class_declaration_to_tree_node(class, id_counter, "Class")
         }
         Statement::VariableDeclaration(var_decl) => {
-            let mut node = TreeNode::new(
-                "VariableDeclaration".to_string(),
-                "VariableDeclaration".to_string(),
-                *id_counter,
-            );
-            *id_counter += 1;
-
-            for decl in &var_decl.declarations {
-                if let Some(decl_node) = variable_declarator_to_tree_node(decl, id_counter) {
-                    node.add_child(decl_node);
-                }
-            }
-
-            Some(Rc::new(node))
+            variable_declaration_to_tree_node(var_decl, id_counter)
         }
         Statement::ExpressionStatement(expr_stmt) => {
             expression_to_tree_node(&expr_stmt.expression, id_counter)
         }
         Statement::BlockStatement(block) => block_statement_to_tree_node(block, id_counter),
+        Statement::ExportNamedDeclaration(export) => {
+            if let Some(decl) = &export.declaration {
+                declaration_to_tree_node(decl, id_counter)
+            } else {
+                let node = TreeNode::new(
+                    "ExportNamedDeclaration".to_string(),
+                    "ExportNamedDeclaration".to_string(),
+                    *id_counter,
+                );
+                *id_counter += 1;
+                Some(Rc::new(node))
+            }
+        }
+        Statement::ExportDefaultDeclaration(export) => {
+            export_default_declaration_to_tree_node(&export.declaration, id_counter)
+        }
         Statement::IfStatement(if_stmt) => {
             let mut node =
                 TreeNode::new("IfStatement".to_string(), "IfStatement".to_string(), *id_counter);
@@ -150,6 +125,111 @@ fn statement_to_tree_node(stmt: &Statement, id_counter: &mut usize) -> Option<Rc
             Some(Rc::new(node))
         }
     }
+}
+
+fn declaration_to_tree_node(decl: &Declaration, id_counter: &mut usize) -> Option<Rc<TreeNode>> {
+    match decl {
+        Declaration::FunctionDeclaration(func) => {
+            function_declaration_to_tree_node(func, id_counter, "Function")
+        }
+        Declaration::ClassDeclaration(class) => {
+            class_declaration_to_tree_node(class, id_counter, "Class")
+        }
+        Declaration::VariableDeclaration(var_decl) => {
+            variable_declaration_to_tree_node(var_decl, id_counter)
+        }
+        _ => {
+            let node =
+                TreeNode::new("Declaration".to_string(), "Declaration".to_string(), *id_counter);
+            *id_counter += 1;
+            Some(Rc::new(node))
+        }
+    }
+}
+
+fn export_default_declaration_to_tree_node(
+    decl: &ExportDefaultDeclarationKind,
+    id_counter: &mut usize,
+) -> Option<Rc<TreeNode>> {
+    match decl {
+        ExportDefaultDeclarationKind::FunctionDeclaration(func) => {
+            function_declaration_to_tree_node(func, id_counter, "DefaultFunction")
+        }
+        ExportDefaultDeclarationKind::ClassDeclaration(class) => {
+            class_declaration_to_tree_node(class, id_counter, "DefaultClass")
+        }
+        _ => {
+            let node = TreeNode::new(
+                "ExportDefaultDeclaration".to_string(),
+                "ExportDefaultDeclaration".to_string(),
+                *id_counter,
+            );
+            *id_counter += 1;
+            Some(Rc::new(node))
+        }
+    }
+}
+
+fn function_declaration_to_tree_node(
+    func: &Function,
+    id_counter: &mut usize,
+    default_label: &str,
+) -> Option<Rc<TreeNode>> {
+    let label = func.id.as_ref().map_or(default_label, |id| id.name.as_str()).to_string();
+    let mut node = TreeNode::new(label, "FunctionDeclaration".to_string(), *id_counter);
+    *id_counter += 1;
+
+    for param in &func.params.items {
+        if let Some(param_node) = formal_parameter_to_tree_node(param, id_counter) {
+            node.add_child(param_node);
+        }
+    }
+
+    if let Some(body) = &func.body {
+        if let Some(body_node) = function_body_to_tree_node(body, id_counter) {
+            node.add_child(body_node);
+        }
+    }
+
+    Some(Rc::new(node))
+}
+
+fn class_declaration_to_tree_node(
+    class: &Class,
+    id_counter: &mut usize,
+    default_label: &str,
+) -> Option<Rc<TreeNode>> {
+    let label = class.id.as_ref().map_or(default_label, |id| id.name.as_str()).to_string();
+    let mut node = TreeNode::new(label, "ClassDeclaration".to_string(), *id_counter);
+    *id_counter += 1;
+
+    for element in &class.body.body {
+        if let Some(elem_node) = class_element_to_tree_node(element, id_counter) {
+            node.add_child(elem_node);
+        }
+    }
+
+    Some(Rc::new(node))
+}
+
+fn variable_declaration_to_tree_node(
+    var_decl: &VariableDeclaration,
+    id_counter: &mut usize,
+) -> Option<Rc<TreeNode>> {
+    let mut node = TreeNode::new(
+        "VariableDeclaration".to_string(),
+        "VariableDeclaration".to_string(),
+        *id_counter,
+    );
+    *id_counter += 1;
+
+    for decl in &var_decl.declarations {
+        if let Some(decl_node) = variable_declarator_to_tree_node(decl, id_counter) {
+            node.add_child(decl_node);
+        }
+    }
+
+    Some(Rc::new(node))
 }
 
 fn expression_to_tree_node(expr: &Expression, id_counter: &mut usize) -> Option<Rc<TreeNode>> {

@@ -75,6 +75,22 @@ impl DuplicateAnalyzer {
                 let sel_analysis1 = SelectorAnalysis::new(&rule1.selector);
                 let sel_analysis2 = SelectorAnalysis::new(&rule2.selector);
 
+                // Track BEM variations independently from similarity threshold.
+                if let (Some(bem1), Some(bem2)) =
+                    (&sel_analysis1.bem_parts, &sel_analysis2.bem_parts)
+                {
+                    if bem1.block == bem2.block && rule1.selector != rule2.selector {
+                        bem_variations.push(DuplicateRule {
+                            rule1: rule1.clone(),
+                            rule2: rule2.clone(),
+                            similarity,
+                            duplicate_type: DuplicateType::BemVariation {
+                                component: bem1.block.clone(),
+                            },
+                        });
+                    }
+                }
+
                 // Check for exact duplicates
                 if rule1.selector == rule2.selector && similarity > 0.99 {
                     exact_duplicates.push(DuplicateRule {
@@ -96,7 +112,7 @@ impl DuplicateAnalyzer {
                     });
                 }
                 // Check for style duplicates (different selector, same styles)
-                else if rule1.selector != rule2.selector && similarity > self.threshold {
+                else if rule1.selector != rule2.selector && similarity >= self.threshold {
                     style_duplicates.push(DuplicateRule {
                         rule1: rule1.clone(),
                         rule2: rule2.clone(),
@@ -106,22 +122,6 @@ impl DuplicateAnalyzer {
                             selector2: rule2.selector.clone(),
                         },
                     });
-
-                    // Check if they're BEM variations
-                    if let (Some(bem1), Some(bem2)) =
-                        (&sel_analysis1.bem_parts, &sel_analysis2.bem_parts)
-                    {
-                        if bem1.block == bem2.block {
-                            bem_variations.push(DuplicateRule {
-                                rule1: rule1.clone(),
-                                rule2: rule2.clone(),
-                                similarity,
-                                duplicate_type: DuplicateType::BemVariation {
-                                    component: bem1.block.clone(),
-                                },
-                            });
-                        }
-                    }
                 }
 
                 // Check for specificity overrides

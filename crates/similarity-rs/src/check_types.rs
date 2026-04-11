@@ -3,7 +3,7 @@ use ignore::WalkBuilder;
 use rayon::prelude::*;
 use similarity_core::language_parser::{GenericTypeDef, LanguageParser};
 use similarity_core::tsed::{calculate_tsed, TSEDOptions};
-use similarity_core::{RustStructureComparator, ComparisonOptions};
+use similarity_core::{ComparisonOptions, RustStructureComparator};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
@@ -35,7 +35,7 @@ fn group_types_by_fingerprint(types: &[ExtractedType]) -> HashMap<String, Vec<us
 
     for (index, extracted_type) in types.iter().enumerate() {
         let fingerprint = generate_type_fingerprint(&extracted_type.type_def);
-        groups.entry(fingerprint).or_insert_with(Vec::new).push(index);
+        groups.entry(fingerprint).or_default().push(index);
     }
 
     groups
@@ -96,7 +96,7 @@ fn compare_types_with_structure(
     if type1.type_def.name == type2.type_def.name && type1.file_path == type2.file_path {
         return Ok(0.0);
     }
-    
+
     let result = comparator.compare_generic_types(&type1.type_def, &type2.type_def);
     Ok(result.overall_similarity)
 }
@@ -269,7 +269,7 @@ pub fn check_types(
 
     // Find similar types
     let mut similar_pairs = Vec::new();
-    
+
     if use_structure_comparison {
         // Use new structure comparison framework
         let structure_options = ComparisonOptions {
@@ -279,14 +279,15 @@ pub fn check_types(
             ..Default::default()
         };
         let mut comparator = RustStructureComparator::with_options(structure_options);
-        
+
         // Compare all type pairs
         for i in 0..extracted_types.len() {
             for j in (i + 1)..extracted_types.len() {
                 let type1 = &extracted_types[i];
                 let type2 = &extracted_types[j];
-                
-                if let Ok(similarity) = compare_types_with_structure(type1, type2, &mut comparator) {
+
+                if let Ok(similarity) = compare_types_with_structure(type1, type2, &mut comparator)
+                {
                     if similarity >= threshold {
                         similar_pairs.push((i, j, similarity));
                     }
@@ -299,7 +300,7 @@ pub fn check_types(
             RustParser::new().map_err(|e| anyhow::anyhow!("Failed to create parser: {}", e))?;
 
         // First, compare types within the same fingerprint group
-        for (_fingerprint, indices) in &fingerprint_groups {
+        for indices in fingerprint_groups.values() {
             if indices.len() < 2 {
                 continue;
             }
@@ -333,7 +334,9 @@ pub fn check_types(
                             let type1 = &extracted_types[idx1];
                             let type2 = &extracted_types[idx2];
 
-                            if let Ok(similarity) = compare_types(type1, type2, &mut parser, &options) {
+                            if let Ok(similarity) =
+                                compare_types(type1, type2, &mut parser, &options)
+                            {
                                 if similarity >= threshold {
                                     similar_pairs.push((idx1, idx2, similarity));
                                 }

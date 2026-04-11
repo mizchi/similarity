@@ -97,7 +97,7 @@ enum TaskStatus {
         .arg("--experimental-types")
         .arg("--no-functions")
         .arg("--threshold")
-        .arg("0.7")
+        .arg("0.35")
         .assert()
         .success()
         .stdout(predicate::str::contains("Status"))

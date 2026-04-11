@@ -5,6 +5,7 @@ pub mod ast_exchange;
 pub mod ast_fingerprint;
 pub mod class_comparator;
 pub mod class_extractor;
+pub mod css_structure_adapter;
 pub mod enhanced_similarity;
 pub mod fast_similarity;
 pub mod function_extractor;
@@ -14,6 +15,8 @@ pub mod generic_tree_sitter_parser;
 pub mod language_parser;
 pub mod overlap_detector;
 pub mod parser;
+pub mod rust_structure_adapter;
+pub mod structure_comparator;
 pub mod subtree_fingerprint;
 pub mod tree;
 pub mod tsed;
@@ -21,11 +24,8 @@ pub mod type_comparator;
 pub mod type_extractor;
 pub mod type_fingerprint;
 pub mod type_normalizer;
-pub mod unified_type_comparator;
-pub mod structure_comparator;
 pub mod typescript_structure_adapter;
-pub mod rust_structure_adapter;
-pub mod css_structure_adapter;
+pub mod unified_type_comparator;
 
 // CLI utilities
 pub mod cli_file_utils;
@@ -61,26 +61,23 @@ pub use type_normalizer::{
     normalize_type, NormalizationOptions, NormalizedType, PropertyMatch,
 };
 pub use unified_type_comparator::{
-    find_similar_unified_types, find_similar_unified_types_structured,
-    UnifiedType, UnifiedTypeComparisonPair,
+    find_similar_unified_types, find_similar_unified_types_structured, UnifiedType,
+    UnifiedTypeComparisonPair,
 };
 
 // Structure comparator exports
-pub use structure_comparator::{
-    Structure, StructureIdentifier, StructureKind, StructureMember, StructureMetadata,
-    SourceLocation, StructureComparator, ComparisonOptions, StructureComparisonResult,
-    MemberMatch, StructureDifferences, MemberComparisonStrategy, compute_structure_fingerprint,
-    should_compare_fingerprints,
-};
-pub use typescript_structure_adapter::{
-    TypeScriptStructureComparator, BatchComparator,
-};
+pub use css_structure_adapter::{CssBatchComparator, CssStructDef, CssStructureComparator};
 pub use rust_structure_adapter::{
-    RustStructureComparator, RustStructDef, RustFieldDef, RustEnumDef, RustVariantDef, RustVariantType,
+    RustEnumDef, RustFieldDef, RustStructDef, RustStructureComparator, RustVariantDef,
+    RustVariantType,
 };
-pub use css_structure_adapter::{
-    CssStructureComparator, CssStructDef, CssBatchComparator,
+pub use structure_comparator::{
+    compute_structure_fingerprint, should_compare_fingerprints, ComparisonOptions,
+    MemberComparisonStrategy, MemberMatch, SourceLocation, Structure, StructureComparator,
+    StructureComparisonResult, StructureDifferences, StructureIdentifier, StructureKind,
+    StructureMember, StructureMetadata,
 };
+pub use typescript_structure_adapter::{BatchComparator, TypeScriptStructureComparator};
 
 // Fast similarity exports
 pub use ast_fingerprint::AstFingerprint;
