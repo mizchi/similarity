@@ -12,10 +12,10 @@ paths: "**/*.py"
 
 Run `similarity-py` on the target project to detect duplicate functions and classes, then analyze results and propose refactoring.
 
-If `similarity-py` is not installed, build it:
+If `similarity-py` is not installed:
 
 ```bash
-cargo install --path crates/similarity-py
+cargo install similarity-py
 ```
 
 ## Step 1: Run similarity analysis

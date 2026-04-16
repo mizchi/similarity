@@ -12,10 +12,10 @@ paths: "**/*.rs"
 
 Run `similarity-rs` on the target Rust project to detect duplicate functions, struct/enum definitions, and impl methods, then analyze results and propose refactoring.
 
-If `similarity-rs` is not installed, build it:
+If `similarity-rs` is not installed:
 
 ```bash
-cargo install --path crates/similarity-rs
+cargo install similarity-rs
 ```
 
 ## Step 1: Run similarity analysis

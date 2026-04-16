@@ -12,10 +12,10 @@ paths: "**/*.mbt"
 
 Run `similarity-mbt` on the target MoonBit project to detect duplicate functions, then analyze the results and propose a refactoring plan.
 
-If `similarity-mbt` is not installed, build it first:
+If `similarity-mbt` is not installed:
 
 ```bash
-cargo install --path crates/similarity-mbt
+cargo install similarity-mbt
 ```
 
 ## Step 1: Run similarity analysis

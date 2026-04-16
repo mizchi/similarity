@@ -15,20 +15,20 @@ Detect which languages are present in the target path and run the appropriate si
 
 Check the target path for file extensions:
 
-| Extension | Tool | Install |
-|-----------|------|---------|
-| `.ts`, `.tsx`, `.js`, `.jsx` | `similarity-ts` | `cargo install similarity-ts` |
-| `.py` | `similarity-py` | `cargo install similarity-py` |
-| `.mbt` | `similarity-mbt` | `cargo install similarity-mbt` |
-| `.rs` | `similarity-rs` | `cargo install similarity-rs` |
-| `.php` | `similarity-php` | `cargo install similarity-php` |
-| `.ex`, `.exs` | `similarity-elixir` | `cargo install similarity-elixir` |
-| `.css`, `.scss` | `similarity-css` | `cargo install similarity-css` |
+| Extension | Tool |
+|-----------|------|
+| `.ts`, `.tsx`, `.js`, `.jsx` | `similarity-ts` |
+| `.py` | `similarity-py` |
+| `.mbt` | `similarity-mbt` |
+| `.rs` | `similarity-rs` |
+| `.php` | `similarity-php` |
+| `.ex`, `.exs` | `similarity-elixir` |
+| `.css`, `.scss` | `similarity-css` |
 
-If the tool is not installed, build from this repo:
+Before running, check if the command exists. If not, install it:
 
 ```bash
-cargo install --path crates/similarity-<lang>
+which similarity-<lang> || cargo install similarity-<lang>
 ```
 
 ## Step 2: Run analysis

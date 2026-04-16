@@ -12,10 +12,10 @@ paths: "**/*.ts,**/*.tsx,**/*.js,**/*.jsx"
 
 Run `similarity-ts` on the target project to detect duplicate functions and types, then analyze results and propose refactoring.
 
-If `similarity-ts` is not installed, build it:
+If `similarity-ts` is not installed:
 
 ```bash
-cargo install --path crates/similarity-ts
+cargo install similarity-ts
 ```
 
 ## Step 1: Run similarity analysis
