@@ -82,7 +82,7 @@ fn display_all_results(
     mut all_results: Vec<DuplicateResult>,
     print: bool,
     filter_function: Option<&String>,
-    _filter_function_body: Option<&String>,
+    filter_function_body: Option<&String>,
 ) -> usize {
     if all_results.is_empty() {
         println!("\nNo duplicate functions found!");
@@ -92,6 +92,20 @@ fn display_all_results(
     if let Some(filter) = filter_function {
         all_results.retain(|dup| {
             dup.result.func1.name.contains(filter) || dup.result.func2.name.contains(filter)
+        });
+    }
+
+    if let Some(body_filter) = filter_function_body {
+        all_results.retain(|dup| {
+            let file_path = dup.file1.to_string_lossy();
+            if let Ok(content) = std::fs::read_to_string(file_path.as_ref()) {
+                let lines: Vec<&str> = content.lines().collect();
+                let body1 = extract_body_lines(&lines, &dup.result.func1);
+                let body2 = extract_body_lines(&lines, &dup.result.func2);
+                body1.contains(body_filter) || body2.contains(body_filter)
+            } else {
+                false
+            }
         });
     }
 
@@ -156,4 +170,13 @@ fn display_all_results(
     println!("\nTotal duplicate pairs found: {}", total_count);
 
     total_count
+}
+
+fn extract_body_lines(lines: &[&str], func: &GenericFunctionDef) -> String {
+    let start = (func.body_start_line.saturating_sub(1)) as usize;
+    let end = std::cmp::min(func.body_end_line as usize, lines.len());
+    if start >= lines.len() {
+        return String::new();
+    }
+    lines[start..end].join("\n")
 }

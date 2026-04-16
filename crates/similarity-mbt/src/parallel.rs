@@ -96,6 +96,15 @@ pub fn check_within_file_duplicates_parallel(
                                     let similarity = match (parsed[i].as_ref(), parsed[j].as_ref())
                                     {
                                         (Some((tree1, size1)), Some((tree2, size2))) => {
+                                            // Skip if below min_tokens threshold
+                                            if let Some(min_tokens) = options.min_tokens {
+                                                if (*size1 as u32) < min_tokens
+                                                    || (*size2 as u32) < min_tokens
+                                                {
+                                                    continue;
+                                                }
+                                            }
+
                                             // Quick pre-filter: max possible similarity
                                             // is min_size/max_size (from edit distance lower bound).
                                             // Skip expensive APTED if it can't reach threshold.
