@@ -224,25 +224,17 @@ fn expand_flex_shorthand(expanded: &mut Vec<(String, String)>, value: &str) {
                 expanded.push(("flex".to_string(), value.to_string()));
             }
         }
-        2 => {
+        2 if is_flex_number(parts[0]) && is_flex_number(parts[1]) => {
             // flex-grow flex-shrink
-            if is_flex_number(parts[0]) && is_flex_number(parts[1]) {
-                expanded.push(("flex-grow".to_string(), parts[0].to_string()));
-                expanded.push(("flex-shrink".to_string(), parts[1].to_string()));
-                expanded.push(("flex-basis".to_string(), "0%".to_string()));
-            } else {
-                expanded.push(("flex".to_string(), value.to_string()));
-            }
+            expanded.push(("flex-grow".to_string(), parts[0].to_string()));
+            expanded.push(("flex-shrink".to_string(), parts[1].to_string()));
+            expanded.push(("flex-basis".to_string(), "0%".to_string()));
         }
-        3 => {
+        3 if is_flex_number(parts[0]) && is_flex_number(parts[1]) && is_flex_basis(parts[2]) => {
             // flex-grow flex-shrink flex-basis
-            if is_flex_number(parts[0]) && is_flex_number(parts[1]) && is_flex_basis(parts[2]) {
-                expanded.push(("flex-grow".to_string(), parts[0].to_string()));
-                expanded.push(("flex-shrink".to_string(), parts[1].to_string()));
-                expanded.push(("flex-basis".to_string(), parts[2].to_string()));
-            } else {
-                expanded.push(("flex".to_string(), value.to_string()));
-            }
+            expanded.push(("flex-grow".to_string(), parts[0].to_string()));
+            expanded.push(("flex-shrink".to_string(), parts[1].to_string()));
+            expanded.push(("flex-basis".to_string(), parts[2].to_string()));
         }
         _ => {
             expanded.push(("flex".to_string(), value.to_string()));
