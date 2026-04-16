@@ -8,6 +8,7 @@ use similarity_core::{
     tree::TreeNode,
     tsed::{calculate_tsed, TSEDOptions},
 };
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -15,6 +16,64 @@ use std::rc::Rc;
 /// MoonBit file with its content and extracted functions
 #[allow(dead_code)]
 pub type MoonBitFileData = FileData<GenericFunctionDef>;
+
+/// Lightweight fingerprint: histogram of node kinds in the tree
+type NodeFingerprint = HashMap<u16, u16>;
+
+/// Pre-parsed function data with tree, size, and fingerprint
+struct ParsedFunc {
+    tree: Rc<TreeNode>,
+    size: usize,
+    fingerprint: NodeFingerprint,
+}
+
+/// Build a fingerprint from a TreeNode by counting occurrences of each node kind.
+/// Uses a u16 hash of the label to keep the fingerprint compact.
+fn build_fingerprint(node: &TreeNode) -> NodeFingerprint {
+    let mut fp = HashMap::new();
+    build_fingerprint_recursive(node, &mut fp);
+    fp
+}
+
+fn build_fingerprint_recursive(node: &TreeNode, fp: &mut NodeFingerprint) {
+    let key = hash_label(&node.label);
+    *fp.entry(key).or_insert(0) += 1;
+    for child in &node.children {
+        build_fingerprint_recursive(child, fp);
+    }
+}
+
+fn hash_label(label: &str) -> u16 {
+    let mut h: u32 = 0;
+    for b in label.bytes() {
+        h = h.wrapping_mul(31).wrapping_add(b as u32);
+    }
+    h as u16
+}
+
+/// Quick Jaccard-like similarity between two fingerprints.
+/// Returns a value between 0.0 and 1.0.
+fn fingerprint_similarity(a: &NodeFingerprint, b: &NodeFingerprint) -> f64 {
+    let mut intersection: u32 = 0;
+    let mut union: u32 = 0;
+
+    for (key, &count_a) in a {
+        let count_b = b.get(key).copied().unwrap_or(0);
+        intersection += count_a.min(count_b) as u32;
+        union += count_a.max(count_b) as u32;
+    }
+    for (key, &count_b) in b {
+        if !a.contains_key(key) {
+            union += count_b as u32;
+        }
+    }
+
+    if union == 0 {
+        1.0
+    } else {
+        intersection as f64 / union as f64
+    }
+}
 
 /// Load and parse MoonBit files in parallel
 #[allow(dead_code)]
@@ -68,14 +127,15 @@ pub fn check_within_file_duplicates_parallel(
                             // Pre-split lines once
                             let lines: Vec<&str> = code.lines().collect();
 
-                            // Pre-parse all function bodies into TreeNodes and cache sizes
-                            let parsed: Vec<Option<(Rc<TreeNode>, usize)>> = functions
+                            // Pre-parse all function bodies with size and fingerprint
+                            let parsed: Vec<Option<ParsedFunc>> = functions
                                 .iter()
                                 .map(|func| {
                                     let body = extract_function_body(&lines, func);
                                     parser.parse(&body, "body.mbt").ok().map(|tree| {
                                         let size = tree.get_subtree_size();
-                                        (tree, size)
+                                        let fingerprint = build_fingerprint(&tree);
+                                        ParsedFunc { tree, size, fingerprint }
                                     })
                                 })
                                 .collect();
@@ -95,30 +155,35 @@ pub fn check_within_file_duplicates_parallel(
 
                                     let similarity = match (parsed[i].as_ref(), parsed[j].as_ref())
                                     {
-                                        (Some((tree1, size1)), Some((tree2, size2))) => {
+                                        (Some(p1), Some(p2)) => {
                                             // Skip if below min_tokens threshold
                                             if let Some(min_tokens) = options.min_tokens {
-                                                if (*size1 as u32) < min_tokens
-                                                    || (*size2 as u32) < min_tokens
+                                                if (p1.size as u32) < min_tokens
+                                                    || (p2.size as u32) < min_tokens
                                                 {
                                                     continue;
                                                 }
                                             }
 
-                                            // Quick pre-filter: max possible similarity
-                                            // is min_size/max_size (from edit distance lower bound).
-                                            // Skip expensive APTED if it can't reach threshold.
-                                            let (min_s, max_s) = if size1 <= size2 {
-                                                (*size1, *size2)
+                                            // Pre-filter 1: tree size ratio
+                                            let (min_s, max_s) = if p1.size <= p2.size {
+                                                (p1.size, p2.size)
                                             } else {
-                                                (*size2, *size1)
+                                                (p2.size, p1.size)
                                             };
                                             if max_s == 0
                                                 || (min_s as f64 / max_s as f64) < threshold
                                             {
                                                 0.0
+                                            } else if fingerprint_similarity(
+                                                &p1.fingerprint,
+                                                &p2.fingerprint,
+                                            ) < threshold
+                                            {
+                                                // Pre-filter 2: node kind histogram
+                                                0.0
                                             } else {
-                                                calculate_tsed(tree1, tree2, options)
+                                                calculate_tsed(&p1.tree, &p2.tree, options)
                                             }
                                         }
                                         _ => 0.0,
