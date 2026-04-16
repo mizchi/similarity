@@ -36,7 +36,7 @@ pub fn handle_items(data : Array[Int]) -> Array[Int] {
 
     fs::write(&file_path, content).unwrap();
 
-    Command::cargo_bin("similarity-moonbit")
+    Command::cargo_bin("similarity-mbt")
         .unwrap()
         .arg(&file_path)
         .arg("--threshold")
@@ -82,7 +82,7 @@ pub fn sort_array(arr : Array[Int]) -> Array[Int] {
 
     fs::write(&file_path, content).unwrap();
 
-    Command::cargo_bin("similarity-moonbit")
+    Command::cargo_bin("similarity-mbt")
         .unwrap()
         .arg(&file_path)
         .arg("--threshold")
@@ -113,7 +113,7 @@ fn func2(y : Int) -> String {
     fs::write(&file_path, content).unwrap();
 
     // With high threshold, should not detect as duplicate
-    Command::cargo_bin("similarity-moonbit")
+    Command::cargo_bin("similarity-mbt")
         .unwrap()
         .arg(&file_path)
         .arg("--threshold")
@@ -150,7 +150,7 @@ fn longer_func2(y : Int) -> Int {
 
     fs::write(&file_path, content).unwrap();
 
-    Command::cargo_bin("similarity-moonbit")
+    Command::cargo_bin("similarity-mbt")
         .unwrap()
         .arg(&file_path)
         .arg("--min-lines")
@@ -195,7 +195,7 @@ pub fn handle_items(data : Array[Int]) -> Array[Int] {
 
     fs::write(&file_path, content).unwrap();
 
-    Command::cargo_bin("similarity-moonbit")
+    Command::cargo_bin("similarity-mbt")
         .unwrap()
         .arg(&file_path)
         .arg("--threshold")

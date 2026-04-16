@@ -26,12 +26,13 @@ impl MoonBitParser {
     }
 
     #[allow(clippy::only_used_in_recursion)]
-    fn convert_node(&self, node: Node, source: &str, id_counter: &mut usize) -> TreeNode {
+    fn convert_node(&self, node: Node, source_bytes: &[u8], id_counter: &mut usize) -> TreeNode {
         let current_id = *id_counter;
         *id_counter += 1;
 
-        let label = node.kind().to_string();
-        let value = match node.kind() {
+        let kind = node.kind();
+        let label = kind.to_string();
+        let value = match kind {
             "lowercase_identifier"
             | "uppercase_identifier"
             | "dot_lowercase_identifier"
@@ -40,17 +41,21 @@ impl MoonBitParser {
             | "string_literal"
             | "char_literal"
             | "true"
-            | "false" => node.utf8_text(source.as_bytes()).unwrap_or("").to_string(),
-            _ => "".to_string(),
+            | "false" => node.utf8_text(source_bytes).unwrap_or("").to_string(),
+            _ => String::new(),
         };
 
         let mut tree_node = TreeNode::new(label, value, current_id);
+        let mut subtree_size: usize = 1;
 
-        for child in node.children(&mut node.walk()) {
-            let child_node = self.convert_node(child, source, id_counter);
+        let mut cursor = node.walk();
+        for child in node.children(&mut cursor) {
+            let child_node = self.convert_node(child, source_bytes, id_counter);
+            subtree_size += child_node.subtree_size.unwrap_or(1);
             tree_node.add_child(Rc::new(child_node));
         }
 
+        tree_node.subtree_size = Some(subtree_size);
         tree_node
     }
 
@@ -232,7 +237,7 @@ impl LanguageParser for MoonBitParser {
 
         let root_node = tree.root_node();
         let mut id_counter = 0;
-        Ok(Rc::new(self.convert_node(root_node, source, &mut id_counter)))
+        Ok(Rc::new(self.convert_node(root_node, source.as_bytes(), &mut id_counter)))
     }
 
     fn extract_functions(

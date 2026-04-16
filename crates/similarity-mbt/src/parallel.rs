@@ -5,10 +5,12 @@ use rayon::prelude::*;
 use similarity_core::{
     cli_parallel::{FileData, SimilarityResult},
     language_parser::{GenericFunctionDef, LanguageParser},
+    tree::TreeNode,
     tsed::{calculate_tsed, TSEDOptions},
 };
 use std::fs;
 use std::path::PathBuf;
+use std::rc::Rc;
 
 /// MoonBit file with its content and extracted functions
 #[allow(dead_code)]
@@ -59,6 +61,22 @@ pub fn check_within_file_duplicates_parallel(
                 match MoonBitParser::new() {
                     Ok(mut parser) => match parser.extract_functions(&code, &file_str) {
                         Ok(functions) => {
+                            if functions.is_empty() {
+                                return None;
+                            }
+
+                            // Pre-split lines once
+                            let lines: Vec<&str> = code.lines().collect();
+
+                            // Pre-parse all function bodies into TreeNodes
+                            let trees: Vec<Option<Rc<TreeNode>>> = functions
+                                .iter()
+                                .map(|func| {
+                                    let body = extract_function_body(&lines, func);
+                                    parser.parse(&body, "body.mbt").ok()
+                                })
+                                .collect();
+
                             let mut similar_pairs = Vec::new();
 
                             for i in 0..functions.len() {
@@ -72,16 +90,9 @@ pub fn check_within_file_duplicates_parallel(
                                         continue;
                                     }
 
-                                    let lines: Vec<&str> = code.lines().collect();
-                                    let body1 = extract_function_body(&lines, func1);
-                                    let body2 = extract_function_body(&lines, func2);
-
-                                    let similarity = match (
-                                        parser.parse(&body1, &format!("{}:func1", file_str)),
-                                        parser.parse(&body2, &format!("{}:func2", file_str)),
-                                    ) {
-                                        (Ok(tree1), Ok(tree2)) => {
-                                            calculate_tsed(&tree1, &tree2, options)
+                                    let similarity = match (trees[i].as_ref(), trees[j].as_ref()) {
+                                        (Some(tree1), Some(tree2)) => {
+                                            calculate_tsed(tree1, tree2, options)
                                         }
                                         _ => 0.0,
                                     };

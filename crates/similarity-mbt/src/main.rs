@@ -6,7 +6,7 @@ mod moonbit_parser;
 mod parallel;
 
 #[derive(Parser)]
-#[command(name = "similarity-moonbit")]
+#[command(name = "similarity-mbt")]
 #[command(about = "MoonBit code similarity analyzer")]
 #[command(version)]
 struct Cli {

@@ -21,8 +21,9 @@ impl TreeNode {
 
     #[must_use]
     pub fn get_subtree_size(&self) -> usize {
-        // Since we can't mutate through Rc, we'll calculate it each time
-        // In a real implementation, you might want to use RefCell for interior mutability
+        if let Some(size) = self.subtree_size {
+            return size;
+        }
         let mut size = 1;
         for child in &self.children {
             size += child.get_subtree_size();

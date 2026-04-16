@@ -1,5 +1,5 @@
 [package]
-name = "similarity-moonbit"
+name = "similarity-mbt"
 version = "0.5.1"
 edition = "2021"
 license = "MIT"
@@ -7,16 +7,16 @@ description = "CLI tool for detecting code duplication in MoonBit projects"
 authors = ["mizchi"]
 repository = "https://github.com/mizchi/similarity"
 homepage = "https://github.com/mizchi/similarity"
-documentation = "https://docs.rs/similarity-moonbit"
+documentation = "https://docs.rs/similarity-mbt"
 keywords = ["moonbit", "duplicate", "detection", "cli", "similarity"]
 categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]
-name = "similarity-moonbit"
+name = "similarity-mbt"
 path = "src/main.rs"
 
 [lib]
-name = "similarity_moonbit"
+name = "similarity_mbt"
 
 [dependencies]
 similarity-core = { version = "0.5.1", path = "../core" }
@@ -32,3 +32,8 @@ octorus-tree-sitter-moonbit = { workspace = true }
 assert_cmd = "2.0"
 predicates = "3.0"
 tempfile = "3.0"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "parser_bench"
+harness = false

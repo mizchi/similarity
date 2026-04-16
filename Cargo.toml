@@ -9,7 +9,7 @@ members = [
   "crates/similarity-elixir",
   "crates/similarity-md",
   "crates/similarity-css",
-  "crates/similarity-moonbit",
+  "crates/similarity-mbt",
 ]
 resolver = "2"
 
