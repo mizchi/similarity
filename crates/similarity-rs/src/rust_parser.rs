@@ -144,10 +144,8 @@ impl RustParser {
 
         for child in node.children(&mut node.walk()) {
             match child.kind() {
-                "identifier" => {
-                    if name.is_empty() {
-                        name = source[child.byte_range().start..child.byte_range().end].to_string();
-                    }
+                "identifier" if name.is_empty() => {
+                    name = source[child.byte_range().start..child.byte_range().end].to_string();
                 }
                 "parameters" => {
                     for param in child.children(&mut child.walk()) {
@@ -297,10 +295,8 @@ impl RustParser {
 
         for child in node.children(&mut node.walk()) {
             match child.kind() {
-                "type_identifier" => {
-                    if name.is_empty() {
-                        name = source[child.byte_range().start..child.byte_range().end].to_string();
-                    }
+                "type_identifier" if name.is_empty() => {
+                    name = source[child.byte_range().start..child.byte_range().end].to_string();
                 }
                 "field_declaration_list" => {
                     for field in child.children(&mut child.walk()) {
@@ -337,10 +333,8 @@ impl RustParser {
 
         for child in node.children(&mut node.walk()) {
             match child.kind() {
-                "type_identifier" => {
-                    if name.is_empty() {
-                        name = source[child.byte_range().start..child.byte_range().end].to_string();
-                    }
+                "type_identifier" if name.is_empty() => {
+                    name = source[child.byte_range().start..child.byte_range().end].to_string();
                 }
                 "enum_variant_list" => {
                     for variant in child.children(&mut child.walk()) {

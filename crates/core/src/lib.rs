@@ -44,7 +44,9 @@ pub use function_extractor::{
 };
 pub use parser::{ast_to_tree_node, parse_and_convert_to_tree};
 pub use tree::TreeNode;
-pub use tsed::{calculate_tsed, calculate_tsed_from_code, TSEDOptions};
+pub use tsed::{
+    calculate_tsed, calculate_tsed_from_code, calculate_tsed_with_threshold, TSEDOptions,
+};
 
 // Type-related exports
 pub use type_comparator::{

@@ -235,10 +235,8 @@ fn calculate_complexity_recursive(node: &TreeNode, depth: usize) -> usize {
 
 fn extract_features_recursive(node: &TreeNode, features: &mut SemanticFeatures) {
     match node.label.as_str() {
-        "identifier" => {
-            if !node.value.is_empty() {
-                features.identifiers.insert(node.value.clone());
-            }
+        "identifier" if !node.value.is_empty() => {
+            features.identifiers.insert(node.value.clone());
         }
         "+" | "-" | "*" | "/" | "%" | "==" | "!=" | "<" | ">" | "<=" | ">=" | "&&" | "||" | "!"
         | "&" | "|" | "^" | "<<" | ">>" => {

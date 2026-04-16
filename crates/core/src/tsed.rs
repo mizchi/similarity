@@ -1,4 +1,4 @@
-use crate::apted::{compute_edit_distance, APTEDOptions};
+use crate::apted::{compute_edit_distance, compute_edit_distance_with_cutoff, APTEDOptions};
 use crate::tree::TreeNode;
 use std::rc::Rc;
 
@@ -107,6 +107,92 @@ pub fn calculate_tsed(tree1: &Rc<TreeNode>, tree2: &Rc<TreeNode>, options: &TSED
         if size_ratio < 0.5 {
             // If one tree is less than half the size of the other,
             // they're likely fundamentally different
+            similarity *= size_ratio.powf(0.5);
+        }
+    }
+
+    similarity
+}
+
+/// Calculate TSED with early termination when the result cannot reach the threshold.
+/// Returns 0.0 immediately if the distance exceeds the budget, avoiding full computation.
+#[must_use]
+#[allow(clippy::cast_precision_loss)]
+pub fn calculate_tsed_with_threshold(
+    tree1: &Rc<TreeNode>,
+    tree2: &Rc<TreeNode>,
+    options: &TSEDOptions,
+    threshold: f64,
+) -> f64 {
+    let size1 = tree1.get_subtree_size() as f64;
+    let size2 = tree2.get_subtree_size() as f64;
+    let max_size = size1.max(size2);
+
+    if max_size == 0.0 {
+        return 1.0;
+    }
+
+    // Maximum distance that could still yield similarity >= threshold
+    // similarity = 1.0 - distance / max_size >= threshold
+    // => distance <= max_size * (1.0 - threshold)
+    let max_distance = max_size * (1.0 - threshold);
+
+    let distance =
+        compute_edit_distance_with_cutoff(tree1, tree2, &options.apted_options, max_distance);
+
+    // If distance exceeded cutoff, similarity is definitely below threshold
+    if distance >= f64::MAX / 2.0 {
+        return 0.0;
+    }
+
+    // Apply the same normalization and penalties as calculate_tsed
+    let tsed_similarity = (1.0 - distance / max_size).max(0.0);
+
+    let tsed_similarity = if distance == 0.0 && size1 != size2 {
+        let size_ratio = size1.min(size2) / size1.max(size2);
+        let size_diff = (size1 - size2).abs();
+
+        if size_diff > 10.0 {
+            tsed_similarity * 0.5
+        } else if size_ratio < 0.95 || size_diff > 3.0 {
+            tsed_similarity * size_ratio.powf(0.5)
+        } else {
+            tsed_similarity
+        }
+    } else {
+        tsed_similarity
+    };
+
+    let tsed_similarity = if options.size_penalty {
+        if max_size < 10.0 && distance > 0.0 {
+            tsed_similarity * 0.8
+        } else if max_size < 30.0 && distance > 0.0 {
+            tsed_similarity * 0.9
+        } else {
+            tsed_similarity
+        }
+    } else {
+        tsed_similarity
+    };
+
+    let mut similarity = tsed_similarity;
+    let size_ratio = size1.min(size2) / size1.max(size2);
+
+    if options.size_penalty {
+        let min_size = size1.min(size2);
+
+        if min_size < 30.0 {
+            let short_function_factor = (min_size / 30.0).powf(0.5);
+            similarity *= short_function_factor;
+
+            if min_size < 10.0 {
+                similarity *= 0.5;
+            } else if min_size < 20.0 {
+                similarity *= 0.7;
+            }
+        }
+
+        if size_ratio < 0.5 {
             similarity *= size_ratio.powf(0.5);
         }
     }

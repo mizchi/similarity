@@ -9,6 +9,7 @@ members = [
   "crates/similarity-elixir",
   "crates/similarity-md",
   "crates/similarity-css",
+  "crates/similarity-mbt",
 ]
 resolver = "2"
 
@@ -30,3 +31,4 @@ tree-sitter-python = "0.25"
 tree-sitter-ruby = "0.23"
 tree-sitter-rust = "0.24"
 tree-sitter-typescript = "0.23"
+octorus-tree-sitter-moonbit = "0.1"
