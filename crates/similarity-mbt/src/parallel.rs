@@ -68,12 +68,15 @@ pub fn check_within_file_duplicates_parallel(
                             // Pre-split lines once
                             let lines: Vec<&str> = code.lines().collect();
 
-                            // Pre-parse all function bodies into TreeNodes
-                            let trees: Vec<Option<Rc<TreeNode>>> = functions
+                            // Pre-parse all function bodies into TreeNodes and cache sizes
+                            let parsed: Vec<Option<(Rc<TreeNode>, usize)>> = functions
                                 .iter()
                                 .map(|func| {
                                     let body = extract_function_body(&lines, func);
-                                    parser.parse(&body, "body.mbt").ok()
+                                    parser.parse(&body, "body.mbt").ok().map(|tree| {
+                                        let size = tree.get_subtree_size();
+                                        (tree, size)
+                                    })
                                 })
                                 .collect();
 
@@ -90,9 +93,24 @@ pub fn check_within_file_duplicates_parallel(
                                         continue;
                                     }
 
-                                    let similarity = match (trees[i].as_ref(), trees[j].as_ref()) {
-                                        (Some(tree1), Some(tree2)) => {
-                                            calculate_tsed(tree1, tree2, options)
+                                    let similarity = match (parsed[i].as_ref(), parsed[j].as_ref())
+                                    {
+                                        (Some((tree1, size1)), Some((tree2, size2))) => {
+                                            // Quick pre-filter: max possible similarity
+                                            // is min_size/max_size (from edit distance lower bound).
+                                            // Skip expensive APTED if it can't reach threshold.
+                                            let (min_s, max_s) = if size1 <= size2 {
+                                                (*size1, *size2)
+                                            } else {
+                                                (*size2, *size1)
+                                            };
+                                            if max_s == 0
+                                                || (min_s as f64 / max_s as f64) < threshold
+                                            {
+                                                0.0
+                                            } else {
+                                                calculate_tsed(tree1, tree2, options)
+                                            }
                                         }
                                         _ => 0.0,
                                     };
