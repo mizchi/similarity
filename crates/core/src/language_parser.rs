@@ -16,6 +16,7 @@ pub enum Language {
     Cpp,
     CSharp,
     Ruby,
+    MoonBit,
     Unknown,
 }
 
@@ -33,6 +34,7 @@ impl Language {
             "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "c++" => Some(Language::Cpp),
             "cs" => Some(Language::CSharp),
             "rb" => Some(Language::Ruby),
+            "mbt" => Some(Language::MoonBit),
             _ => None,
         }
     }
