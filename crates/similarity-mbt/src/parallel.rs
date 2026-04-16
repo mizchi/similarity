@@ -6,7 +6,7 @@ use similarity_core::{
     cli_parallel::{FileData, SimilarityResult},
     language_parser::{GenericFunctionDef, LanguageParser},
     tree::TreeNode,
-    tsed::{calculate_tsed, TSEDOptions},
+    tsed::{calculate_tsed_with_threshold, TSEDOptions},
 };
 use std::collections::HashMap;
 use std::fs;
@@ -183,7 +183,9 @@ pub fn check_within_file_duplicates_parallel(
                                                 // Pre-filter 2: node kind histogram
                                                 0.0
                                             } else {
-                                                calculate_tsed(&p1.tree, &p2.tree, options)
+                                                calculate_tsed_with_threshold(
+                                                    &p1.tree, &p2.tree, options, threshold,
+                                                )
                                             }
                                         }
                                         _ => 0.0,

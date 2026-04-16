@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use similarity_core::language_parser::LanguageParser;
-use similarity_core::tsed::{calculate_tsed, TSEDOptions};
+use similarity_core::tsed::{calculate_tsed, calculate_tsed_with_threshold, TSEDOptions};
 use similarity_mbt::moonbit_parser::MoonBitParser;
 
 const SMALL_SOURCE: &str = r#"
@@ -190,7 +190,7 @@ fn bench_full_pipeline_10_functions(c: &mut Criterion) {
             for i in 0..functions.len() {
                 for j in (i + 1)..functions.len() {
                     if let (Some(tree1), Some(tree2)) = (trees[i].as_ref(), trees[j].as_ref()) {
-                        let sim = calculate_tsed(tree1, tree2, &options);
+                        let sim = calculate_tsed_with_threshold(tree1, tree2, &options, 0.85);
                         black_box(sim);
                         count += 1;
                     }
@@ -227,7 +227,7 @@ fn bench_full_pipeline_20_functions(c: &mut Criterion) {
             for i in 0..functions.len() {
                 for j in (i + 1)..functions.len() {
                     if let (Some(tree1), Some(tree2)) = (trees[i].as_ref(), trees[j].as_ref()) {
-                        let sim = calculate_tsed(tree1, tree2, &options);
+                        let sim = calculate_tsed_with_threshold(tree1, tree2, &options, 0.85);
                         black_box(sim);
                         count += 1;
                     }
